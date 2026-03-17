@@ -21,6 +21,9 @@ model Aluno {
   nome      String
   biometria Int?
 
+  entrada   DateTime
+  saida     DateTime
+
   turma_id  Int
   turma     Turma  @relation(fields: [turma_id], references: [id])
 }
