@@ -19,7 +19,7 @@ model Aluno {
   id        Int    @id @default(autoincrement())
   matricula String @unique
   nome      String
-  biometria Int?
+  biometria Int
 
   entrada   DateTime
   saida     DateTime
