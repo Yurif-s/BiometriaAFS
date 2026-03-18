@@ -1,4 +1,4 @@
-import { Aluno } from "./student.entity";
+import { Aluno } from "./aluno.entity";
 
 export class Turma {
   id: number;
