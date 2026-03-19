@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
 import { Turma, Prisma } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { PrismaService } from '../services/prisma.service';
 
 export interface IRepository<T> {
   create(data: T): Promise<T>;
@@ -14,54 +12,44 @@ export interface IRepository<T> {
 
 @Injectable()
 export class TurmaRepository implements IRepository<Turma> {
+  constructor(private readonly prisma: PrismaService) {}
+
   async create(data: Prisma.TurmaCreateInput): Promise<Turma> {
-    return prisma.turma.create({
+    return this.prisma.turma.create({
       data,
-      include: {
-        alunos: true,
-      },
+      include: { alunos: true },
     });
   }
 
   async findById(id: number): Promise<Turma | null> {
-    return prisma.turma.findUnique({
+    return this.prisma.turma.findUnique({
       where: { id },
-      include: {
-        alunos: true,
-      },
+      include: { alunos: true },
     });
   }
 
   async findAll(): Promise<Turma[]> {
-    return prisma.turma.findMany({
-      include: {
-        alunos: true,
-      },
+    return this.prisma.turma.findMany({
+      include: { alunos: true },
     });
   }
 
   async findByAno(ano: number): Promise<Turma[]> {
-    return prisma.turma.findMany({
+    return this.prisma.turma.findMany({
       where: { ano },
-      include: {
-        alunos: true,
-      },
+      include: { alunos: true },
     });
   }
 
   async update(id: number, data: Prisma.TurmaUpdateInput): Promise<Turma> {
-    return prisma.turma.update({
+    return this.prisma.turma.update({
       where: { id },
       data,
-      include: {
-        alunos: true,
-      },
+      include: { alunos: true },
     });
   }
 
   async delete(id: number): Promise<void> {
-    await prisma.turma.delete({
-      where: { id },
-    });
+    await this.prisma.turma.delete({ where: { id } });
   }
 }
