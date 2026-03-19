@@ -1,7 +1,6 @@
-import { PrismaClient } from "@prisma/client/extension";
-import { Aluno } from "@prisma/client"; 
-
-const prisma = new PrismaClient();
+import { Injectable } from '@nestjs/common';
+import { Aluno, Prisma } from '@prisma/client';
+import { PrismaService } from '../services/prisma.service';
 
 export interface IRepository<T> {
   create(data: T): Promise<T>;
@@ -12,8 +11,10 @@ export interface IRepository<T> {
 }
 
 export class AlunoRepository implements IRepository<Aluno> {
+  constructor(private readonly prisma: PrismaService) {}
+
   async create(data: Aluno): Promise<Aluno> {
-    return prisma.aluno.create({
+    return this.prisma.aluno.create({
       data: {
         matricula: data.matricula,
         nome: data.nome,
@@ -29,7 +30,7 @@ export class AlunoRepository implements IRepository<Aluno> {
   }
 
   async findById(id: number): Promise<Aluno | null> {
-    return prisma.aluno.findUnique({
+    return this.prisma.aluno.findUnique({
       where: { id },
       include: {
         turma: true,
@@ -38,7 +39,7 @@ export class AlunoRepository implements IRepository<Aluno> {
   }
 
   async findAll(): Promise<Aluno[]> {
-    return prisma.aluno.findMany({
+    return this.prisma.aluno.findMany({
       include: {
         turma: true,
       },
@@ -46,7 +47,7 @@ export class AlunoRepository implements IRepository<Aluno> {
   }
 
   async findByMatricula(matricula: string): Promise<Aluno | null> {
-    return prisma.aluno.findUnique({
+    return this.prisma.aluno.findUnique({
       where: { matricula },
       include: {
         turma: true,
@@ -55,7 +56,7 @@ export class AlunoRepository implements IRepository<Aluno> {
   }
 
   async findByTurmaId(turma_id: number): Promise<Aluno[]> {
-    return prisma.aluno.findMany({
+    return this.prisma.aluno.findMany({
       where: { turma_id },
       include: {
         turma: true,
@@ -64,7 +65,7 @@ export class AlunoRepository implements IRepository<Aluno> {
   }
 
   async update(id: number, data: Partial<Aluno>): Promise<Aluno> {
-    return prisma.aluno.update({
+    return this.prisma.aluno.update({
       where: { id },
       data: {
         matricula: data.matricula,
@@ -81,7 +82,7 @@ export class AlunoRepository implements IRepository<Aluno> {
   }
 
   async delete(id: number): Promise<void> {
-    await prisma.aluno.delete({
+    await this.prisma.aluno.delete({
       where: { id },
     });
   }
