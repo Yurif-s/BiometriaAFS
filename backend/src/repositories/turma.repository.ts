@@ -1,6 +1,6 @@
-import { PrismaClient } from "@prisma/client/extension";
-import { Turma } from "generated/prisma/browser";
-
+import { Injectable } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
+import { Turma, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -12,13 +12,11 @@ export interface IRepository<T> {
   delete(id: number): Promise<void>;
 }
 
+@Injectable()
 export class TurmaRepository implements IRepository<Turma> {
-  async create(data: Turma): Promise<Turma> {
+  async create(data: Prisma.TurmaCreateInput): Promise<Turma> {
     return prisma.turma.create({
-      data: {
-        nome: data.nome,
-        ano: data.ano,
-      },
+      data,
       include: {
         alunos: true,
       },
@@ -51,13 +49,10 @@ export class TurmaRepository implements IRepository<Turma> {
     });
   }
 
-  async update(id: number, data: Partial<Turma>): Promise<Turma> {
+  async update(id: number, data: Prisma.TurmaUpdateInput): Promise<Turma> {
     return prisma.turma.update({
       where: { id },
-      data: {
-        nome: data.nome,
-        ano: data.ano,
-      },
+      data,
       include: {
         alunos: true,
       },

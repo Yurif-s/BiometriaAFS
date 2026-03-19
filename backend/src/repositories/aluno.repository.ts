@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client/extension";
-import { Aluno } from "generated/prisma/browser";
+import { Aluno } from "@prisma/client"; 
 
 const prisma = new PrismaClient();
 
