@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { TurmaRepository } from '../repositories/turma.repository';
 import { CreateTurmaDto } from '../dtos/create-turma.dto';
 import { UpdateTurmaDto } from '../dtos/update-turma.dto';
-import { Turma } from 'generated/prisma/browser';
+import { Turma } from '@prisma/client';
 
 @Injectable()
 export class TurmaService {
