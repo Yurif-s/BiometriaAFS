@@ -1,31 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { Aluno, Prisma } from '@prisma/client';
 import { PrismaService } from '../services/prisma.service';
+import { IRepository } from './interfaces/repository.interface';
 
-export interface IRepository<T> {
-  create(data: T): Promise<T>;
-  findById(id: number): Promise<T | null>;
-  findAll(): Promise<T[]>;
-  update(id: number, data: Partial<T>): Promise<T>;
-  delete(id: number): Promise<void>;
-}
-
-export class AlunoRepository implements IRepository<Aluno> {
+@Injectable()
+export class AlunoRepository implements IRepository<Aluno, Prisma.AlunoCreateInput, Prisma.AlunoUpdateInput> {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: Aluno): Promise<Aluno> {
+  async create(data: Prisma.AlunoCreateInput): Promise<Aluno> {
     return this.prisma.aluno.create({
-      data: {
-        matricula: data.matricula,
-        nome: data.nome,
-        biometria: data.biometria,
-        entrada: data.entrada,
-        saida: data.saida,
-        turma_id: data.turma_id,
-      },
-      include: {
-        turma: true,
-      },
+      data,
+      include: { turma: true },
     });
   }
 
@@ -64,20 +49,11 @@ export class AlunoRepository implements IRepository<Aluno> {
     });
   }
 
-  async update(id: number, data: Partial<Aluno>): Promise<Aluno> {
+  async update(id: number, data: Prisma.AlunoUpdateInput): Promise<Aluno> {
     return this.prisma.aluno.update({
       where: { id },
-      data: {
-        matricula: data.matricula,
-        nome: data.nome,
-        biometria: data.biometria,
-        entrada: data.entrada,
-        saida: data.saida,
-        turma_id: data.turma_id,
-      },
-      include: {
-        turma: true,
-      },
+      data,
+      include: { turma: true },
     });
   }
 
