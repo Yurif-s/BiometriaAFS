@@ -1,17 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { Turma, Prisma } from '@prisma/client';
 import { PrismaService } from '../services/prisma.service';
-
-export interface IRepository<T> {
-  create(data: T): Promise<T>;
-  findById(id: number): Promise<T | null>;
-  findAll(): Promise<T[]>;
-  update(id: number, data: Partial<T>): Promise<T>;
-  delete(id: number): Promise<void>;
-}
+import { IRepository } from './interfaces/repository.interface';
 
 @Injectable()
-export class TurmaRepository implements IRepository<Turma> {
+export class TurmaRepository implements IRepository<Turma, Prisma.TurmaCreateInput, Prisma.TurmaUpdateInput> {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(data: Prisma.TurmaCreateInput): Promise<Turma> {
