@@ -22,7 +22,23 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@prisma/client": ["./generated/prisma/client.ts"]
-    }
+      "@prisma/client": ["./generated/prisma/client.ts"],
+      "services/*": [
+        "./src/services/*"
+      ],
+      "repositories/*": [
+        "./src/repositories/*"
+      ],
+      "dtos/*": [
+        "./src/dtos/*"
+      ],
+      "entities/*": [
+        "./src/entities/*"
+      ],
+      "modules/*": [
+        "./src/modules/*"
+      ]
+    },
+    "types": ["jest", "node"],
   }
 }
