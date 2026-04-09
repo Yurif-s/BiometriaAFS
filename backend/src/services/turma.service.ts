@@ -15,7 +15,8 @@ export class TurmaService {
         ano: createTurmaDto.ano,
       } as Turma);
     } catch (error) {
-      throw new BadRequestException('Erro ao criar turma: ' + error.message);
+      const message = error instanceof Error ? error.message : String(error);
+      throw new BadRequestException('Erro ao criar turma: ' + message);
     }
   }
 
@@ -41,7 +42,8 @@ export class TurmaService {
     try {
       return await this.turmaRepository.update(id, updateTurmaDto as Partial<Turma>);
     } catch (error) {
-      throw new BadRequestException('Erro ao atualizar turma: ' + error.message);
+      const message = error instanceof Error ? error.message : String(error);
+      throw new BadRequestException('Erro ao atualizar turma: ' + message);
     }
   }
 
@@ -51,7 +53,8 @@ export class TurmaService {
     try {
       await this.turmaRepository.delete(id);
     } catch (error) {
-      throw new BadRequestException('Erro ao deletar turma: ' + error.message);
+      const message = error instanceof Error ? error.message : String(error);
+      throw new BadRequestException('Erro ao deletar turma: ' + message);
     }
   }
 }
