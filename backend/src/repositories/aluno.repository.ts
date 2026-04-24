@@ -1,16 +1,32 @@
 import { Injectable } from '@nestjs/common';
 import { Aluno, Prisma } from '@prisma/client';
 import { PrismaService } from '../services/prisma.service';
-import { IRepository } from './interfaces/repository.interface';
+
+export interface IRepository<T> {
+  create(data: T): Promise<T>;
+  findById(id: number): Promise<T | null>;
+  findAll(): Promise<T[]>;
+  update(id: number, data: Partial<T>): Promise<T>;
+  delete(id: number): Promise<void>;
+}
 
 @Injectable()
-export class AlunoRepository implements IRepository<Aluno, Prisma.AlunoCreateInput, Prisma.AlunoUpdateInput> {
+export class AlunoRepository implements IRepository<Aluno> {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: Prisma.AlunoCreateInput): Promise<Aluno> {
+  async create(data: Aluno): Promise<Aluno> {
     return this.prisma.aluno.create({
-      data,
-      include: { turma: true },
+      data: {
+        matricula: data.matricula,
+        nome: data.nome,
+        biometria: data.biometria,
+        entrada: data.entrada,
+        saida: data.saida,
+        turma_id: data.turma_id,
+      },
+      include: {
+        turma: true,
+      },
     });
   }
 
@@ -40,6 +56,15 @@ export class AlunoRepository implements IRepository<Aluno, Prisma.AlunoCreateInp
     });
   }
 
+  async findByBiometria(biometria: number): Promise<Aluno | null> {
+    return this.prisma.aluno.findFirst({
+      where: { biometria },
+      include: {
+        turma: true,
+      },
+    });
+  }
+
   async findByTurmaId(turma_id: number): Promise<Aluno[]> {
     return this.prisma.aluno.findMany({
       where: { turma_id },
@@ -49,11 +74,20 @@ export class AlunoRepository implements IRepository<Aluno, Prisma.AlunoCreateInp
     });
   }
 
-  async update(id: number, data: Prisma.AlunoUpdateInput): Promise<Aluno> {
+  async update(id: number, data: Partial<Aluno>): Promise<Aluno> {
     return this.prisma.aluno.update({
       where: { id },
-      data,
-      include: { turma: true },
+      data: {
+        matricula: data.matricula,
+        nome: data.nome,
+        biometria: data.biometria,
+        entrada: data.entrada,
+        saida: data.saida,
+        turma_id: data.turma_id,
+      },
+      include: {
+        turma: true,
+      },
     });
   }
 
