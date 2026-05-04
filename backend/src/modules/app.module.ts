@@ -5,10 +5,13 @@ import { PrismaService } from '../services/prisma.service';
 import { TurmaController } from '../controllers/turma.controller';
 import { TurmaService } from '../services/turma.service';
 import { TurmaRepository } from '../repositories/turma.repository';
+import { AlunoController } from '../controllers/aluno.controller';
+import { AlunoService } from 'services/aluno.service';
+import { AlunoRepository } from 'repositories/aluno.repository';
 
 @Module({
   imports: [],
-  controllers: [AppController, TurmaController],
-  providers: [AppService, PrismaService, TurmaService, TurmaRepository],
+  controllers: [AppController, TurmaController, AlunoController],
+  providers: [AppService, PrismaService, TurmaService, TurmaRepository, AlunoService, AlunoRepository],
 })
 export class AppModule {}
