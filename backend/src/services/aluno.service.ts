@@ -49,8 +49,8 @@ export class AlunoService {
         matricula: createAlunoDto.matricula,
         nome: createAlunoDto.nome,
         biometria: createAlunoDto.biometria,
-        entrada: new Date(createAlunoDto.entrada),
-        saida: new Date(createAlunoDto.saida),
+        entrada: createAlunoDto.entrada ? new Date(createAlunoDto.entrada) : undefined,
+        saida: createAlunoDto.saida ? new Date(createAlunoDto.saida) : undefined,
         turma_id: createAlunoDto.turma_id,
       } as Aluno);
     } catch (error) {
