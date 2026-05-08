@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsNotEmpty, IsDateString } from 'class-validator';
+import { IsString, IsNumber, IsNotEmpty, IsDateString, IsOptional } from 'class-validator';
 
 export class CreateAlunoDto {
   @IsString()
@@ -14,12 +14,12 @@ export class CreateAlunoDto {
   biometria!: number;
 
   @IsDateString()
-  @IsNotEmpty({ message: 'Data de entrada é obrigatória' })
-  entrada!: string;
+  @IsOptional()
+  entrada?: string;
 
   @IsDateString()
-  @IsNotEmpty({ message: 'Data de saída é obrigatória' })
-  saida!: string;
+  @IsOptional()
+  saida?: string;
 
   @IsNumber()
   @IsNotEmpty({ message: 'ID da turma é obrigatório' })
