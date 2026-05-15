@@ -5,8 +5,8 @@
 #include <time.h>
 
 // WIFI 
-const char* ssid     = "Network_Name";
-const char* password = "Network_Password";
+const char* ssid     = "Nome_Rede";
+const char* password = "Senha_Rede";
 
 // NTP
 const char* ntpServer    = "pool.ntp.org";
@@ -383,7 +383,7 @@ void setup() {
     while (1) delay(1000);
   }
 
-  // CORREÇÃO 1: Security Level ajustado de 5 -> 3
+  // CORREÇÃO 1: Security Level ajustado de 5 → 3
   // O AS608/R307 suporta 5 níveis de segurança. O nível define o
   // threshold mínimo de score para aceitar um match em fingerFastSearch
 
