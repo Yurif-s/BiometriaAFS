@@ -5,8 +5,8 @@
 #include <time.h>
 
 // WIFI 
-const char* ssid     = "ASUS Vivobook Go 14/15";
-const char* password = "123456789";
+const char* ssid     = "Network_Name";
+const char* password = "Network_Password";
 
 // NTP
 const char* ntpServer    = "pool.ntp.org";
