@@ -1,14 +1,18 @@
 # BiometriaAFS
 
-Sistema de controle de frequência biométrica para instituições de ensino. O backend gerencia **alunos** e **turmas** via API REST, enquanto um dispositivo **ESP32** realiza a leitura de digitais e comunica as presenças ao servidor.
+Sistema completo de controle de frequência biométrica para instituições de ensino. Integra um **firmware ESP32** com sensor de digital, uma **API REST** em NestJS, um **frontend React** para gestão de alunos e uma **extensão Chrome** que automatiza o lançamento de faltas no sistema da Seduc-CE.
 
 ---
 
 ## Sumário
 
 - [Sobre o Projeto](#sobre-o-projeto)
-- [Arquitetura](#arquitetura)
-- [Tecnologias](#tecnologias)
+- [Arquitetura Geral](#arquitetura-geral)
+- [Módulos](#módulos)
+  - [Backend](#backend)
+  - [Frontend](#frontend)
+  - [Extensão Chrome](#extensão-chrome)
+  - [Hardware (ESP32)](#hardware-esp32)
 - [Pré-requisitos](#pré-requisitos)
 - [Instalação](#instalação)
 - [Configuração](#configuração)
@@ -16,107 +20,213 @@ Sistema de controle de frequência biométrica para instituições de ensino. O 
 - [Endpoints da API](#endpoints-da-api)
 - [Testes](#testes)
 - [Estrutura de Pastas](#estrutura-de-pastas)
-- [Hardware (ESP32)](#hardware-esp32)
 
 ---
 
 ## Sobre o Projeto
 
-O **BiometriaAFS** automatiza o registro de frequência escolar através de biometria digital. O fluxo é simples: o aluno aproxima o dedo do sensor acoplado ao ESP32 → o dispositivo envia a leitura para a API → o backend identifica o aluno e registra a presença.
+O **BiometriaAFS** automatiza o ciclo completo da frequência escolar:
+
+1. O aluno apoia o dedo no sensor acoplado ao **ESP32S3**
+2. O firmware identifica o template biométrico e envia a presença para a **API**
+3. O **frontend** exibe e permite gerenciar os registros de alunos e turmas
+4. A **extensão Chrome** lê os dados da API e lança as faltas automaticamente no portal **Professor Online (Seduc-CE)**
 
 **Funcionalidades:**
 
-- CRUD completo de Turmas
-- CRUD completo de Alunos com vinculação por turma
-- Identificação de aluno por biometria (integração com ESP32)
-- Busca de aluno por matrícula
-- Listagem de alunos por turma e por ano
+- CRUD completo de Turmas e Alunos
+- Identificação de aluno por biometria, matrícula ou turma
+- Registro de entrada e saída (opcional)
 - Validação de unicidade de matrícula e biometria
+- Interface web para cadastro, edição e remoção de alunos
+- Automação de lançamento de faltas no Professor Online via extensão
 - Testes unitários dos serviços
 
 ---
 
-## Arquitetura
-
-O projeto segue uma **arquitetura em camadas**, promovendo separação de responsabilidades e facilitando testes isolados:
+## Arquitetura Geral
 
 ```
-HTTP Request
-     │
-     ▼
-┌─────────────┐
-│ Controllers │  ← Entrada HTTP, validação de rota e parâmetros
-└──────┬──────┘
-       │
-       ▼
-┌─────────────┐
-│  Services   │  ← Regras de negócio, validações de domínio
-└──────┬──────┘
-       │
-       ▼
-┌──────────────┐
-│ Repositories │  ← Acesso a dados via Prisma ORM
-└──────┬───────┘
-       │
-       ▼
-┌────────────┐
-│ PostgreSQL │
-└────────────┘
+┌─────────────┐     digital      ┌─────────────────┐
+│   ESP32S3   │ ──────────────▶  │                 │
+│  + AS608    │   HTTP Request   │   API NestJS    │
+└─────────────┘                  │  (localhost:3000)│
+                                 │                 │
+┌─────────────┐   fetch REST     │                 │
+│  Frontend   │ ◀──────────────▶ │                 │
+│   (React)   │                  └────────┬────────┘
+└─────────────┘                           │
+                                          │ Prisma ORM
+┌─────────────────┐  fetch REST           ▼
+│ Extensão Chrome │ ──────────▶  ┌────────────────┐
+│ Faltosos Seduc  │              │   PostgreSQL    │
+│ (Professor      │              └────────────────┘
+│  Online Seduc)  │
+└─────────────────┘
 ```
-
-### Modelos de Dados
-
-**Turma**
-
-| Campo | Tipo    | Descrição              |
-|-------|---------|------------------------|
-| id    | Int     | Identificador único    |
-| nome  | String  | Nome da turma          |
-| ano   | Int     | Ano letivo             |
-
-**Aluno**
-
-| Campo     | Tipo     | Descrição                              |
-|-----------|----------|----------------------------------------|
-| id        | Int      | Identificador único                    |
-| matricula | String   | Matrícula (única)                      |
-| nome      | String   | Nome completo                          |
-| biometria | Int      | ID do template biométrico (único)      |
-| entrada   | DateTime | Registro de entrada                    |
-| saida     | DateTime | Registro de saída                      |
-| turma_id  | Int      | FK para Turma                          |
 
 ---
 
-## Tecnologias
+## Módulos
 
-| Tecnologia    | Versão   | Uso                          |
-|---------------|----------|------------------------------|
-| NestJS        | ^11.0    | Framework backend             |
-| TypeScript    | ^5.7     | Linguagem                    |
-| Prisma ORM    | ^7.4     | Acesso ao banco de dados     |
-| PostgreSQL    | —        | Banco de dados relacional    |
-| Jest          | ^30.0    | Testes unitários             |
-| pnpm          | —        | Gerenciador de pacotes       |
+### Backend
+
+API REST construída com NestJS seguindo arquitetura em camadas:
+
+```
+Controllers → Services → Repositories → Prisma → PostgreSQL
+```
+
+**Modelos de dados:**
+
+**Turma**
+
+| Campo | Tipo   | Obrigatório | Descrição           |
+|-------|--------|:-----------:|---------------------|
+| id    | Int    | —           | Identificador único |
+| nome  | String | ✅          | Nome da turma       |
+| ano   | Int    | ✅          | Ano letivo          |
+
+**Aluno**
+
+| Campo     | Tipo     | Obrigatório | Descrição                         |
+|-----------|----------|:-----------:|-----------------------------------|
+| id        | Int      | —           | Identificador único               |
+| matricula | String   | ✅          | Matrícula (única)                 |
+| nome      | String   | ✅          | Nome completo                     |
+| biometria | Int      | ✅          | ID do template biométrico (único) |
+| entrada   | DateTime | ❌          | Registro de entrada (opcional)    |
+| saida     | DateTime | ❌          | Registro de saída (opcional)      |
+| turma_id  | Int      | ✅          | FK para Turma                     |
+
+**Tecnologias:**
+
+| Tecnologia | Versão | Uso                       |
+|------------|--------|---------------------------|
+| NestJS     | ^11.0  | Framework backend         |
+| TypeScript | ^5.7   | Linguagem                 |
+| Prisma ORM | ^7.4   | Acesso ao banco de dados  |
+| PostgreSQL | —      | Banco de dados relacional |
+| Jest       | ^30.0  | Testes unitários          |
+| pnpm       | —      | Gerenciador de pacotes    |
+
+---
+
+### Frontend
+
+Interface web desenvolvida em **React + Vite** para gestão de alunos e turmas.
+
+**Funcionalidades:**
+
+- Cadastro de alunos com validação de matrícula duplicada
+- Tabela de alunos com busca e filtros
+- Edição inline via modal
+- Confirmação de exclusão com feedback visual
+- Persistência local via `localStorage`
+- Notificações com `react-hot-toast`
+
+**Tecnologias:**
+
+| Tecnologia      | Versão | Uso                       |
+|-----------------|--------|---------------------------|
+| React           | ^19.0  | Framework de UI           |
+| Vite            | ^6.0   | Bundler e dev server      |
+| react-hot-toast | ^2.5   | Notificações              |
+| react-icons     | ^5.5   | Ícones                    |
+
+---
+
+### Extensão Chrome
+
+Extensão **"Faltosos Seduc"** (Manifest V3) que automatiza o lançamento de faltas no portal Professor Online da Seduc-CE.
+
+**Como funciona:**
+
+1. O professor acessa o portal `professor.seduc.ce.gov.br`
+2. Clica no botão da extensão para iniciar
+3. A extensão injeta um content script na página
+4. Consulta a API local (`localhost:3000`) para obter os alunos presentes
+5. Lança automaticamente as faltas dos alunos ausentes no portal
+
+**Permissões necessárias:**
+
+| Permissão     | Motivo                                            |
+|---------------|---------------------------------------------------|
+| `storage`     | Armazenar configurações locais                    |
+| `activeTab`   | Acessar a aba ativa do professor                  |
+| `scripting`   | Injetar o content script no portal da Seduc       |
+
+> **Hosts permitidos:** `professor.seduc.ce.gov.br` e `localhost:3000`
+
+---
+
+### Hardware (ESP32)
+
+Firmware para **ESP32-S3** com sensor biométrico **AS608** (ou compatível com a biblioteca `Adafruit_Fingerprint`).
+
+**Componentes:**
+
+| Componente         | Pino ESP32 |
+|--------------------|------------|
+| Sensor AS608 — RX  | GPIO 16    |
+| Sensor AS608 — TX  | GPIO 17    |
+| Buzzer             | GPIO 4     |
+| LED WiFi           | GPIO 2     |
+| LED Biometria      | GPIO 36    |
+
+**Fluxo do firmware:**
+
+1. Conecta ao WiFi e sincroniza horário via **NTP** (`pool.ntp.org`, UTC-3)
+2. Aguarda apoio do dedo no sensor AS608
+3. Realiza matching do template biométrico
+4. Em caso de sucesso: toca melodia, acende LED e envia a leitura para a API
+5. Em caso de falha: emite som de erro
+
+**Configuração do firmware** — edite as constantes no topo do `.ino`:
+
+```cpp
+const char* ssid     = "Nome_Rede";
+const char* password = "Senha_Rede";
+```
 
 ---
 
 ## Pré-requisitos
 
+**Backend:**
 - [Node.js](https://nodejs.org/) >= 18
 - [pnpm](https://pnpm.io/) >= 8
 - [PostgreSQL](https://www.postgresql.org/) >= 14
+
+**Frontend:**
+- [Node.js](https://nodejs.org/) >= 18
+- npm ou pnpm
+
+**Extensão Chrome:**
+- Google Chrome ou Chromium
+
+**Hardware:**
+- Arduino IDE com suporte ao ESP32-S3
+- Biblioteca `Adafruit_Fingerprint`
 
 ---
 
 ## Instalação
 
 ```bash
-# Clone o repositório
 git clone https://github.com/Yurif-s/BiometriaAFS.git
-cd BiometriaAFS/backend
+cd BiometriaAFS
+```
 
-# Instale as dependências
+**Backend:**
+```bash
+cd backend
+pnpm install
+```
+
+**Frontend:**
+```bash
+cd frontend
 pnpm install
 ```
 
@@ -124,38 +234,48 @@ pnpm install
 
 ## Configuração
 
-### 1. Variáveis de ambiente
+### Backend — variáveis de ambiente
 
-Crie um arquivo `.env` na raiz do `backend/`:
+Crie um `.env` em `backend/`:
 
 ```env
 DATABASE_URL="postgresql://usuario:senha@localhost:5432/biometriaafs"
 ```
 
-### 2. Banco de dados
+### Backend — banco de dados
 
 ```bash
-# Executa as migrations
+cd backend
 npx prisma migrate dev
-
-# Gera o Prisma Client
 npx prisma generate
 ```
+
+### Extensão Chrome — instalação manual
+
+1. Acesse `chrome://extensions/`
+2. Ative o **Modo desenvolvedor**
+3. Clique em **Carregar sem compactação**
+4. Selecione a pasta `extensao/`
 
 ---
 
 ## Executando o Projeto
 
+**Backend:**
 ```bash
-# Modo desenvolvimento (com hot reload)
-pnpm run start:dev
-
-# Modo produção
-pnpm run build
-pnpm run start:prod
+cd backend
+pnpm run start:dev   # desenvolvimento (hot reload)
+pnpm run start:prod  # produção
 ```
+API disponível em `http://localhost:3000`
 
-A API estará disponível em `http://localhost:3000`.
+**Frontend:**
+```bash
+cd frontend
+pnpm run dev         # desenvolvimento
+pnpm run build       # build de produção
+```
+Interface disponível em `http://localhost:5173`
 
 ---
 
@@ -163,14 +283,14 @@ A API estará disponível em `http://localhost:3000`.
 
 ### Turmas — `/turmas`
 
-| Método | Rota            | Descrição                  |
-|--------|-----------------|----------------------------|
-| POST   | `/turmas`       | Cria uma nova turma        |
-| GET    | `/turmas`       | Lista todas as turmas      |
-| GET    | `/turmas/:id`   | Busca turma por ID         |
-| GET    | `/turmas/ano/:ano` | Busca turmas por ano    |
-| PUT    | `/turmas/:id`   | Atualiza uma turma         |
-| DELETE | `/turmas/:id`   | Remove uma turma           |
+| Método | Rota               | Descrição             |
+|--------|--------------------|-----------------------|
+| POST   | `/turmas`          | Cria uma nova turma   |
+| GET    | `/turmas`          | Lista todas as turmas |
+| GET    | `/turmas/:id`      | Busca turma por ID    |
+| GET    | `/turmas/ano/:ano` | Busca turmas por ano  |
+| PUT    | `/turmas/:id`      | Atualiza uma turma    |
+| DELETE | `/turmas/:id`      | Remove uma turma      |
 
 **Payload — `POST /turmas`**
 ```json
@@ -180,20 +300,18 @@ A API estará disponível em `http://localhost:3000`.
 }
 ```
 
----
-
 ### Alunos — `/alunos`
 
-| Método | Rota                          | Descrição                        |
-|--------|-------------------------------|----------------------------------|
-| POST   | `/alunos`                     | Cria um novo aluno               |
-| GET    | `/alunos`                     | Lista todos os alunos            |
-| GET    | `/alunos/:id`                 | Busca aluno por ID               |
-| GET    | `/alunos/matricula/:matricula`| Busca aluno por matrícula        |
-| GET    | `/alunos/biometria/:biometria`| Busca aluno por template biométrico |
-| GET    | `/alunos/turma/:turmaId`      | Lista alunos de uma turma        |
-| PUT    | `/alunos/:id`                 | Atualiza dados de um aluno       |
-| DELETE | `/alunos/:id`                 | Remove um aluno                  |
+| Método | Rota                           | Descrição                           |
+|--------|--------------------------------|-------------------------------------|
+| POST   | `/alunos`                      | Cria um novo aluno                  |
+| GET    | `/alunos`                      | Lista todos os alunos               |
+| GET    | `/alunos/:id`                  | Busca aluno por ID                  |
+| GET    | `/alunos/matricula/:matricula` | Busca aluno por matrícula           |
+| GET    | `/alunos/biometria/:biometria` | Busca aluno por template biométrico |
+| GET    | `/alunos/turma/:turmaId`       | Lista alunos de uma turma           |
+| PUT    | `/alunos/:id`                  | Atualiza dados de um aluno          |
+| DELETE | `/alunos/:id`                  | Remove um aluno                     |
 
 **Payload — `POST /alunos`**
 ```json
@@ -201,40 +319,31 @@ A API estará disponível em `http://localhost:3000`.
   "matricula": "2025001",
   "nome": "João da Silva",
   "biometria": 42,
-  "entrada": "2025-03-10T07:30:00.000Z",
-  "saida": "2025-03-10T13:00:00.000Z",
   "turma_id": 1
 }
 ```
 
-> **Nota:** os campos `matricula` e `biometria` são únicos por aluno. Tentativas de duplicação resultam em `409 Conflict`.
+> Os campos `entrada` e `saida` são **opcionais**. Quando omitidos, são salvos como `null` e podem ser preenchidos via `PUT /alunos/:id`. Os campos `matricula` e `biometria` são únicos — duplicatas retornam `409 Conflict`.
 
 ---
 
 ## Testes
 
-Os testes unitários ficam em `test/` e cobrem os serviços `TurmaService` e `AlunoService`.
-
 ```bash
-# Executa os testes unitários
-pnpm run test
+cd backend
 
-# Modo watch (re-executa ao salvar)
-pnpm run test:watch
-
-# Cobertura de código
-pnpm run test:cov
-
-# Testes e2e
-pnpm run test:e2e
+pnpm run test        # unitários
+pnpm run test:watch  # modo watch
+pnpm run test:cov    # cobertura
+pnpm run test:e2e    # end-to-end
 ```
 
-**Cobertura atual dos serviços:**
+**Cobertura atual:**
 
-| Serviço        | Testes | Cenários cobertos                                   |
-|----------------|--------|-----------------------------------------------------|
-| TurmaService   | 14     | create, findAll, findById, findByAno, update, delete |
-| AlunoService   | 11     | create, findAll, findById, update, delete            |
+| Serviço      | Testes | Cenários cobertos                                    |
+|--------------|--------|------------------------------------------------------|
+| TurmaService | 14     | create, findAll, findById, findByAno, update, delete |
+| AlunoService | 11     | create, findAll, findById, update, delete            |
 
 ---
 
@@ -244,51 +353,39 @@ pnpm run test:e2e
 BiometriaAFS/
 ├── backend/
 │   ├── prisma/
-│   │   ├── schema.prisma         # Modelos Turma e Aluno
-│   │   └── migrations/           # Histórico de migrations
+│   │   ├── schema.prisma              # Modelos Turma e Aluno
+│   │   └── migrations/                # Histórico de migrations
 │   ├── src/
-│   │   ├── controllers/          # TurmaController, AlunoController
-│   │   ├── services/             # TurmaService, AlunoService, PrismaService
-│   │   ├── repositories/         # TurmaRepository, AlunoRepository
-│   │   │   └── interfaces/       # IRepository<T>
-│   │   ├── dtos/                 # DTOs de criação e atualização
-│   │   ├── entities/             # Representação das entidades
-│   │   ├── modules/              # AppModule
-│   │   ├── common/               # Código reutilizável
-│   │   ├── config/               # Configurações
-│   │   └── utils/                # Utilitários
+│   │   ├── controllers/               # TurmaController, AlunoController
+│   │   ├── services/                  # TurmaService, AlunoService, PrismaService
+│   │   ├── repositories/              # TurmaRepository, AlunoRepository
+│   │   │   └── interfaces/            # IRepository<T>
+│   │   ├── dtos/                      # DTOs de criação e atualização
+│   │   ├── entities/                  # Representação das entidades
+│   │   ├── modules/                   # AppModule
+│   │   ├── common/                    # Código reutilizável
+│   │   ├── config/                    # Configurações
+│   │   └── utils/                     # Utilitários
 │   └── test/
 │       ├── turma.service.spec.ts
 │       ├── aluno.service.spec.ts
 │       └── app.e2e-spec.ts
-└── esp32_digital_clone/
-    └── esp32_digital_clone.ino   # Firmware do sensor biométrico
+│
+├── frontend/
+│   └── src/
+│       ├── components/                # Header, Footer, CadastroForm, AlunosTable, modais
+│       ├── hooks/                     # useAlunos, useStatus
+│       └── constants/                 # Dados iniciais e opções de turma
+│
+├── extensao/
+│   ├── content.js                     # Script injetado no portal Seduc
+│   ├── manifest.json                  # Manifest V3
+│   └── popup/                         # UI da extensão (HTML, CSS, JS)
+│
+└── Esp32S3_Biometrics/
+    └── Code_Biometrics/
+        └── Code_Biometrics.ino        # Firmware ESP32-S3 + AS608
 ```
-
----
-
-## Hardware (ESP32)
-
-O firmware localizado em `esp32_digital_clone/` simula a leitura biométrica utilizando um sensor ultrassônico como substituto do leitor de digital para fins de desenvolvimento.
-
-**Componentes:**
-
-| Componente      | Pino ESP32 |
-|-----------------|-----------|
-| Trigger (HC-SR04) | GPIO 5  |
-| Echo (HC-SR04)    | GPIO 18 |
-| Buzzer            | GPIO 4  |
-| LED WiFi          | GPIO 2  |
-| LED Presença      | GPIO 36 |
-
-**Fluxo do firmware:**
-
-1. Conecta ao WiFi
-2. Aguarda detecção de proximidade via sensor ultrassônico
-3. Ao detectar presença, emite sinal sonoro e luminoso
-4. Envia a leitura biométrica para a API (`GET /alunos/biometria/:id`)
-
-> Para usar o leitor de digital real (ex: **AS608** ou **R307**), substitua a lógica do sensor ultrassônico pela leitura do template via comunicação serial no firmware.
 
 ---
 
@@ -297,8 +394,9 @@ O firmware localizado em `esp32_digital_clone/` simula a leitura biométrica uti
 - **Repository Pattern** — isolamento da camada de dados dos serviços
 - **DTOs com `class-validator`** — validação declarativa nas entradas HTTP
 - **Injeção de Dependência** — via sistema nativo do NestJS, facilitando mocks nos testes
-- **Exceções semânticas** — `NotFoundException`, `ConflictException` e `BadRequestException` usados conforme o contexto
+- **Exceções semânticas** — `NotFoundException`, `ConflictException` e `BadRequestException` conforme o contexto
 - **Testes unitários isolados** — repositórios completamente mockados, sem dependência de banco real
+- **Custom Hooks (React)** — lógica de estado separada dos componentes de UI
 
 ---
 
