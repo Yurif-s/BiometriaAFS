@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "Faltosos Seduc",
+  "version": "1.0.0",
+  "description": "Automação do sistema de frequência",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://professor.seduc.ce.gov.br/*",
+    "http://localhost:3000/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "file:///*"
+  ],
+  "action": {
+    "default_popup": "/popup/popup.html",
+    "default_title": "Faltosos Seduc"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://professor.seduc.ce.gov.br/*",
+        "file:///C:/Users/joaom/OneDrive/%C3%81rea%20de%20Trabalho/ScriptBiometriaAFS/index.html"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "icons": {
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
