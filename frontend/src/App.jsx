@@ -98,7 +98,9 @@ function App() {
               <p>Cadastre, edite, visualize e remova alunos</p>
             </div>
           </div>
-          <div className="novo-btn">Alunos cadastrados: {alunos.length}</div>
+          <div className="novo-btn" style={{cursor: "pointer"}} onClick={() =>
+            document.getElementById("lista-alunos").scrollIntoView({ behavior: "smooth" })
+          }>Alunos cadastrados: {alunos.length}</div>
         </section>
 
         {/* Banner global (fora dos cards) */}

@@ -9,7 +9,7 @@ export default function AlunosTable({ alunos, onEdit, onDelete }) {
   );
 
   return (
-    <section className="card">
+    <section className="card" id="lista-alunos">
       <section className="search-box">
         <FaSearch className="search-icon" />
         <input
