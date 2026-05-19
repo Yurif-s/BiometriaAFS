@@ -9,13 +9,17 @@ import CadastroForm from "./components/CadastroForm";
 import AlunosTable from "./components/AlunosTable";
 import EditModal from "./components/EditModal";
 import DeleteConfirmModal from "./components/DeleteConfirmModal";
+import TurmasManager from "./components/TurmasManager";
 
 import { useAlunos } from "./hooks/useAlunos";
+import { useTurmas } from "./hooks/useTurmas";
 import { useStatus } from "./hooks/useStatus";
 
 function App() {
-  const { alunos, turmaOptions, addAluno, updateAluno, deleteAluno, matriculaExists } =
-    useAlunos();
+  const { turmas, turmaOptions, addTurma, deleteTurma, updateTurma,turmaExists } = useTurmas();
+
+  const { alunos, addAluno, updateAluno, deleteAluno, matriculaExists } =
+    useAlunos(turmaOptions);
 
   const { statusMessage, showStatus, showMsg } = useStatus();
 
@@ -66,7 +70,7 @@ function App() {
     setShowDeleteConfirm(false);
   };
 
-  // Cadastro save (called from CadastroForm)
+  // Cadastro save
   const handleCadastroSave = (formData) => {
     if (matriculaExists(formData.matricula.trim())) {
       showMsg("Já existe um aluno com essa matrícula.", 3000);
@@ -98,12 +102,20 @@ function App() {
               <p>Cadastre, edite, visualize e remova alunos</p>
             </div>
           </div>
-          <div className="novo-btn" style={{cursor: "pointer"}} onClick={() =>
-            document.getElementById("lista-alunos").scrollIntoView({ behavior: "smooth" })
-          }>Alunos cadastrados: {alunos.length}</div>
+          <div
+            className="novo-btn"
+            style={{ cursor: "pointer" }}
+            onClick={() =>
+              document
+                .getElementById("lista-alunos")
+                .scrollIntoView({ behavior: "smooth" })
+            }
+          >
+            Alunos cadastrados: {alunos.length}
+          </div>
         </section>
 
-        {/* Banner global (fora dos cards) */}
+        {/* Banner global */}
         {showStatus && <StatusBanner message={statusMessage} />}
 
         {/* Modais */}
@@ -126,7 +138,16 @@ function App() {
           />
         )}
 
-        {/* Formulário de cadastro */}
+        {/* Gerenciar Turmas */}
+        <TurmasManager
+          turmas={turmas}
+          onAdd={addTurma}
+          onUpdate={updateTurma}
+          onDelete={deleteTurma}
+          turmaExists={turmaExists}
+        />
+
+        {/* Formulário de cadastro de aluno */}
         <CadastroForm
           turmaOptions={turmaOptions}
           onSave={handleCadastroSave}

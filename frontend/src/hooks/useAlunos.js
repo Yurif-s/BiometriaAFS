@@ -1,5 +1,25 @@
 import { useState, useEffect } from "react";
-import { initialAlunos, turmaOpcoesDefault } from "../constants/data";
+
+const initialAlunos = [
+  {
+    nome: "Maria Eduarda Silva",
+    matricula: "2025001",
+    turma: "1ª Informática",
+    digital: "12345",
+  },
+  {
+    nome: "João Pedro Santos",
+    matricula: "2025002",
+    turma: "1ª Informática",
+    digital: "12346",
+  },
+  {
+    nome: "Ana Beatriz Lima",
+    matricula: "2025003",
+    turma: "2ª Informática",
+    digital: "12347",
+  },
+];
 
 export function useAlunos() {
   const [alunos, setAlunos] = useState(() => {
@@ -10,10 +30,6 @@ export function useAlunos() {
   useEffect(() => {
     localStorage.setItem("alunos", JSON.stringify(alunos));
   }, [alunos]);
-
-  const turmaOptions = [
-    ...new Set([...turmaOpcoesDefault, ...alunos.map((a) => a.turma)]),
-  ];
 
   const addAluno = (aluno) => {
     setAlunos((prev) => [aluno, ...prev]);
@@ -32,12 +48,5 @@ export function useAlunos() {
   const matriculaExists = (matricula) =>
     alunos.some((a) => a.matricula === matricula);
 
-  return {
-    alunos,
-    turmaOptions,
-    addAluno,
-    updateAluno,
-    deleteAluno,
-    matriculaExists,
-  };
+  return { alunos, addAluno, updateAluno, deleteAluno, matriculaExists };
 }
