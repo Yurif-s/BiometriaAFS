@@ -1,7 +1,8 @@
-// TurmasManager.jsx
+// TurmasManager.jsx — com confirmação de exclusão e suporte a showToast
 import { useState } from "react";
 import { FaPlus, FaTrash, FaChalkboardTeacher, FaPen } from "react-icons/fa";
 import EditTurmaModal from "./EditTurmaModal";
+import DeleteConfirmModal from "./DeleteConfirmModal";
 
 const emptyForm = { nome: "", ano: new Date().getFullYear() };
 const emptyErrors = { nome: false, ano: false };
@@ -11,16 +12,20 @@ export default function TurmasManager({
     onAdd,
     onUpdate,
     onDelete,
-    turmaExists
+    turmaExists,
+    showToast,
 }) {
     const [formData, setFormData] = useState(emptyForm);
     const [errors, setErrors] = useState(emptyErrors);
     const [errorMsg, setErrorMsg] = useState("");
     const [addAnim, setAddAnim] = useState(false);
 
-    // Modal de edição
     const [editingTurma, setEditingTurma] = useState(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(false);
 
     const openEditModal = (turma) => {
         setEditingTurma(turma);
@@ -32,7 +37,28 @@ export default function TurmasManager({
         setEditingTurma(null);
     };
 
-    // Cadastro
+    const handleDeleteClick = (turma) => {
+        setDeleteTarget(turma);
+        setShowDeleteConfirm(true);
+    };
+
+    const handleDeleteConfirm = () => {
+        setDeleteLoading(true);
+        setTimeout(() => {
+            onDelete(deleteTarget.id);
+            setDeleteLoading(false);
+            setShowDeleteConfirm(false);
+            const nome = deleteTarget.nome;
+            setDeleteTarget(null);
+            if (showToast) showToast(`Turma "${nome}" removida com sucesso.`);
+        }, 800);
+    };
+
+    const handleDeleteCancel = () => {
+        setDeleteTarget(null);
+        setShowDeleteConfirm(false);
+    };
+
     const handleChange = (field, value) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
         setErrors((prev) => ({ ...prev, [field]: false }));
@@ -59,10 +85,12 @@ export default function TurmasManager({
             return;
         }
 
-        onAdd({ nome: formData.nome, ano: Number(formData.ano) });
+        const nomeTurma = formData.nome.trim();
+        onAdd({ nome: nomeTurma, ano: Number(formData.ano) });
         setFormData(emptyForm);
         setErrors(emptyErrors);
         setErrorMsg("");
+        if (showToast) showToast(`Turma "${nomeTurma}" adicionada com sucesso!`);
     };
 
     return (
@@ -74,7 +102,6 @@ export default function TurmasManager({
                 <h3 style={{ margin: 0 }}>Gerenciar Turmas</h3>
             </div>
 
-            {/* Form de cadastro */}
             <div className="form-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", marginBottom: "20px" }}>
                 <div className="input-group" style={{ gridColumn: "span 2" }}>
                     <label>Nome da Turma</label>
@@ -114,7 +141,6 @@ export default function TurmasManager({
                 </button>
             </div>
 
-            {/* Lista */}
             {turmas.length === 0 ? (
                 <p style={{ color: "#888", textAlign: "center", padding: "20px 0" }}>
                     Nenhuma turma cadastrada ainda.
@@ -145,7 +171,7 @@ export default function TurmasManager({
                                         <button
                                             type="button"
                                             className="excluir"
-                                            onClick={() => onDelete(turma.id)}
+                                            onClick={() => handleDeleteClick(turma)}
                                         >
                                             <FaTrash />
                                         </button>
@@ -157,14 +183,23 @@ export default function TurmasManager({
                 </table>
             )}
 
-            {/* MODAL */}
             <EditTurmaModal
                 isOpen={isEditModalOpen}
                 onClose={closeEditModal}
                 turma={editingTurma}
-                onSave={onUpdate}     
+                onSave={onUpdate}
                 turmaExists={turmaExists}
             />
+
+            {showDeleteConfirm && (
+                <DeleteConfirmModal
+                    target={deleteTarget}
+                    loading={deleteLoading}
+                    onConfirm={handleDeleteConfirm}
+                    onCancel={handleDeleteCancel}
+                    type="turma"
+                />
+            )}
         </section>
     );
 }

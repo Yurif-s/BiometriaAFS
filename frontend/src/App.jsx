@@ -1,3 +1,4 @@
+// App.jsx — Versão 1: Toast customizado (sem biblioteca externa)
 import "./App.css";
 import { useState } from "react";
 import { FaUsers } from "react-icons/fa";
@@ -10,18 +11,18 @@ import AlunosTable from "./components/AlunosTable";
 import EditModal from "./components/EditModal";
 import DeleteConfirmModal from "./components/DeleteConfirmModal";
 import TurmasManager from "./components/TurmasManager";
+import Toast from "./components/Toast";
 
 import { useAlunos } from "./hooks/useAlunos";
 import { useTurmas } from "./hooks/useTurmas";
 import { useStatus } from "./hooks/useStatus";
+import { useToast } from "./hooks/useToast";
 
 function App() {
-  const { turmas, turmaOptions, addTurma, deleteTurma, updateTurma,turmaExists } = useTurmas();
-
-  const { alunos, addAluno, updateAluno, deleteAluno, matriculaExists } =
-    useAlunos(turmaOptions);
-
+  const { turmas, turmaOptions, addTurma, deleteTurma, updateTurma, turmaExists } = useTurmas();
+  const { alunos, addAluno, updateAluno, deleteAluno, matriculaExists } = useAlunos(turmaOptions);
   const { statusMessage, showStatus, showMsg } = useStatus();
+  const { toast, showToast, hideToast } = useToast();
 
   // Edit
   const [editingForm, setEditingForm] = useState(null);
@@ -31,11 +32,7 @@ function App() {
     setEditingForm((prev) => ({ ...prev, [field]: value }));
 
   const handleUpdate = () => {
-    if (
-      !editingForm.nome.trim() ||
-      !editingForm.matricula.trim() ||
-      !editingForm.turma.trim()
-    ) {
+    if (!editingForm.nome.trim() || !editingForm.matricula.trim() || !editingForm.turma.trim()) {
       showMsg("Preencha nome, matrícula e turma para atualizar.", 3000);
       return;
     }
@@ -44,7 +41,7 @@ function App() {
     setEditingForm(null);
   };
 
-  // Delete
+  // Delete aluno
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -58,10 +55,12 @@ function App() {
     setDeleteLoading(true);
     setTimeout(() => {
       deleteAluno(deleteTarget.matricula);
-      showMsg("Aluno removido com sucesso.");
       setDeleteLoading(false);
       setShowDeleteConfirm(false);
+      const nome = deleteTarget.nome;
       setDeleteTarget(null);
+      // 🎉 Toast de sucesso
+      showToast(`Aluno "${nome}" removido com sucesso.`);
     }, 800);
   };
 
@@ -70,10 +69,10 @@ function App() {
     setShowDeleteConfirm(false);
   };
 
-  // Cadastro save
+  // Cadastro
   const handleCadastroSave = (formData) => {
     if (matriculaExists(formData.matricula.trim())) {
-      showMsg("Já existe um aluno com essa matrícula.", 3000);
+      showToast("Já existe um aluno com essa matrícula.", "error");
       return false;
     }
     addAluno({
@@ -82,7 +81,7 @@ function App() {
       turma: formData.turma.trim(),
       digital: formData.digital.trim() || "-",
     });
-    showMsg("Aluno cadastrado com sucesso!");
+    showToast(`Aluno "${formData.nome.trim()}" cadastrado com sucesso!`);
     return true;
   };
 
@@ -91,7 +90,6 @@ function App() {
       <Header />
 
       <main className="container">
-        {/* Topo */}
         <section className="top-section">
           <div className="aluno-title">
             <div className="circle-icon">
@@ -106,19 +104,15 @@ function App() {
             className="novo-btn"
             style={{ cursor: "pointer" }}
             onClick={() =>
-              document
-                .getElementById("lista-alunos")
-                .scrollIntoView({ behavior: "smooth" })
+              document.getElementById("lista-alunos").scrollIntoView({ behavior: "smooth" })
             }
           >
             Alunos cadastrados: {alunos.length}
           </div>
         </section>
 
-        {/* Banner global */}
         {showStatus && <StatusBanner message={statusMessage} />}
 
-        {/* Modais */}
         {editingForm && (
           <EditModal
             editingForm={editingForm}
@@ -135,19 +129,20 @@ function App() {
             loading={deleteLoading}
             onConfirm={handleDeleteConfirm}
             onCancel={handleDeleteCancel}
+            type="aluno"
           />
         )}
 
-        {/* Gerenciar Turmas */}
+        {/* TurmasManager recebe showToast para disparar após excluir turma */}
         <TurmasManager
           turmas={turmas}
           onAdd={addTurma}
           onUpdate={updateTurma}
           onDelete={deleteTurma}
           turmaExists={turmaExists}
+          showToast={showToast}
         />
 
-        {/* Formulário de cadastro de aluno */}
         <CadastroForm
           turmaOptions={turmaOptions}
           onSave={handleCadastroSave}
@@ -155,7 +150,6 @@ function App() {
           statusMessage={statusMessage}
         />
 
-        {/* Tabela */}
         <AlunosTable
           alunos={alunos}
           onEdit={handleEditClick}
@@ -164,6 +158,16 @@ function App() {
       </main>
 
       <Footer />
+
+      {/* Toast global */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          duration={toast.duration}
+          onClose={hideToast}
+        />
+      )}
     </div>
   );
 }
