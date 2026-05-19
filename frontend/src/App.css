@@ -606,10 +606,13 @@ tbody tr:hover{
   font-weight:600;
 }
 
-.confirm-yes{
-  background:#009245;
-  color:white;
-  border:1px solid #009245;
+.confirm-yes.salvar {
+  background: #ff4b4b;
+  box-shadow: 0 10px 20px rgba(255, 75, 75, 0.25);
+}
+ 
+.confirm-yes.salvar:hover {
+  background: #e03333;
 }
 
 .confirm-no{
