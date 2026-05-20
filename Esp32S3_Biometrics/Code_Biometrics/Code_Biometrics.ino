@@ -1,433 +1,677 @@
-// BIOMETRIA + WIFI + LED + BUZZER — VERSÃO CORRIGIDA
+// BIOMETRIA AFS — Display + Sensor Biométrico + WiFi + Data/Hora
 
-#include <WiFi.h>
 #include <Adafruit_Fingerprint.h>
+#include <SPI.h>
+#include <TFT_eSPI.h>
+#include <WiFi.h>
 #include <time.h>
 
-// WIFI 
-const char* ssid     = "Nome_Rede";
-const char* password = "Senha_Rede";
+// ── DISPLAY ──────────────────────────────────────────────
+TFT_eSPI tft = TFT_eSPI();
 
-// NTP
-const char* ntpServer    = "pool.ntp.org";
-long        gmtOffset_sec      = -3 * 3600;
-int         daylightOffset_sec = 0;
+// ── PINOS ────────────────────────────────────────────────
+#define BUZZER         15
+#define LED_WIFI        2
+#define LED_BIOMETRIA  36
 
-// PINOS
-#define BUZZER         4
-#define LED_WIFI       2
-#define LED_BIOMETRIA 36
-#define RXD2          16
-#define TXD2          17
+#define RXD_BIO        17
+#define TXD_BIO        18
 
-// SENSOR 
-HardwareSerial       mySerial(2);
+// ── WIFI ────────────────────────────────────────────────
+const char* ssid = "ASUS Vivobook Go 14/15";
+const char* password = "123456789";
+
+bool wifiConectado = false;
+unsigned long ultimoTesteWifi = 0;
+
+// ── NTP / DATA E HORA ──────────────────────────────────
+const char* ntpServer = "pool.ntp.org";
+const long gmtOffset_sec = -3 * 3600;
+const int daylightOffset_sec = 0;
+
+// ── SENSOR BIOMÉTRICO ───────────────────────────────────
+HardwareSerial mySerial(1);
 Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
 
-// CONTROLE 
-// CORREÇÃO 3: flags independentes para estado do dedo e autenticação
-bool dedoPresente   = false;   // true enquanto o dedo está apoiado
-bool autenticado    = false;   // true somente após matching bem-sucedido
-int  ultimoIDAutenticado = -1; // armazena o ID para exibição
+// ────────────────────────────────────────────────────────
+// BUZZER
+// ────────────────────────────────────────────────────────
 
-// SONS 
-int melodia[]      = {988, 1319};
-int duracaoNotas[] = {120, 200};
-
-void tocarMario() {
-  for (int i = 0; i < 2; i++) {
-    tone(BUZZER, melodia[i]);
-    delay(duracaoNotas[i]);
-    noTone(BUZZER);
-    delay(50);
-  }
+void beep(int freq, int durMs) {
+  ledcWriteTone(BUZZER, freq);
+  delay(durMs);
+  ledcWriteTone(BUZZER, 0);
 }
 
-void somWifi() {
-  tone(BUZZER, 500); delay(100); noTone(BUZZER);
-  delay(50);
-  tone(BUZZER, 500); delay(150); noTone(BUZZER);
+void somSucesso() {
+  beep(1000, 100);
+  delay(80);
+  beep(1300, 180);
+}
+
+void somDuplo() {
+  beep(1000, 100);
+  delay(80);
+  beep(1000, 100);
 }
 
 void somErro() {
-  tone(BUZZER, 250); delay(300); noTone(BUZZER);
+  beep(250, 500);
 }
 
-// DATA E HORA 
-void imprimirDataHora() {
+// ────────────────────────────────────────────────────────
+// DATA E HORA
+// ────────────────────────────────────────────────────────
+
+String obterDataHora() {
+
   struct tm timeinfo;
+
   if (!getLocalTime(&timeinfo)) {
-    Serial.println("[NTP] Erro ao obter data/hora");
+    return "Sem horario";
+  }
+
+  char buffer[30];
+
+  strftime(buffer, sizeof(buffer), "%d/%m/%Y %H:%M:%S", &timeinfo);
+
+  return String(buffer);
+}
+
+// ────────────────────────────────────────────────────────
+// WIFI
+// ────────────────────────────────────────────────────────
+
+void conectarWiFi() {
+
+  // JÁ CONECTADO
+  if (WiFi.status() == WL_CONNECTED) {
+
+    if (!wifiConectado) {
+
+      wifiConectado = true;
+
+      Serial.println("WiFi conectado!");
+      Serial.print("IP: ");
+      Serial.println(WiFi.localIP());
+
+      digitalWrite(LED_WIFI, HIGH);
+
+      // DISPLAY
+      tft.fillScreen(TFT_BLACK);
+
+      tft.setTextSize(3);
+      tft.setTextColor(TFT_GREEN, TFT_BLACK);
+
+      tft.setCursor(10, 10);
+      tft.println("WiFi");
+
+      tft.setCursor(10, 40);
+      tft.println("Conectado!");
+
+      tft.setTextSize(2);
+
+      tft.setTextColor(TFT_WHITE, TFT_BLACK);
+
+      tft.setCursor(10, 90);
+      tft.print("IP:");
+
+      tft.setCursor(10, 110);
+      tft.println(WiFi.localIP());
+
+      // SOM
+      beep(1200, 120);
+      delay(80);
+      beep(1600, 180);
+
+      delay(2500);
+
+      telaAguardando();
+    }
+
     return;
   }
-  Serial.print("[NTP] Data/Hora: ");
-  Serial.println(&timeinfo, "%d/%m/%Y %H:%M:%S");
-}
 
-// WIFI 
-void conectarWiFi() {
-  WiFi.begin(ssid, password);
-  Serial.print("[WiFi] Conectando");
-  int tentativas = 0;
-  while (WiFi.status() != WL_CONNECTED && tentativas < 20) {
-    delay(500);
-    Serial.print(".");
-    tentativas++;
+  // DESCONECTADO
+  wifiConectado = false;
+
+  digitalWrite(LED_WIFI, LOW);
+
+  // TENTA RECONECTAR
+  if (millis() - ultimoTesteWifi >= 3000) {
+
+    ultimoTesteWifi = millis();
+
+    Serial.println("Tentando conectar no WiFi...");
+
+    // DISPLAY
+    tft.fillScreen(TFT_BLACK);
+
+    tft.setTextSize(3);
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+
+    tft.setCursor(10, 10);
+    tft.println("WiFi");
+
+    tft.setCursor(10, 40);
+    tft.println("Conectando...");
+
+    tft.setTextSize(2);
+
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+
+    tft.setCursor(10, 90);
+    tft.println(ssid);
+
+    WiFi.disconnect();
+
+    delay(100);
+
+    WiFi.begin(ssid, password);
   }
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("\n[WiFi] Conectado! IP: " + WiFi.localIP().toString());
-    digitalWrite(LED_WIFI, HIGH);
-    somWifi();
-  } else {
-    Serial.println("\n[WiFi] Falha na conexão — operando offline");
-    digitalWrite(LED_WIFI, LOW);
-  }
 }
 
-// MENU 
-void mostrarMenu() {
-  Serial.println("\n===== MENU =====");
-  Serial.println("1 - Cadastrar digital");
-  Serial.println("2 - Listar digitais");
-  Serial.println("3 - Apagar digital");
-  Serial.println("================");
+// ────────────────────────────────────────────────────────
+// DISPLAY
+// ────────────────────────────────────────────────────────
+
+void telaMensagem(const char* titulo, const char* msg, uint16_t cor = TFT_WHITE) {
+
+  tft.fillScreen(TFT_BLACK);
+
+  tft.setTextSize(3);
+  tft.setTextColor(cor, TFT_BLACK);
+
+  tft.setCursor(10, 10);
+  tft.println(titulo);
+
+  tft.setTextSize(2);
+
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+
+  tft.setCursor(10, 60);
+  tft.println(msg);
 }
 
-// GERAR NOVO ID 
+void telaIniciando() {
+  telaMensagem("Biometria AFS", "Iniciando...", TFT_CYAN);
+}
+
+void telaAguardando() {
+  telaMensagem("Biometria AFS", "Aguardando dedo...", TFT_CYAN);
+}
+
+// ────────────────────────────────────────────────────────
+// ACESSO LIBERADO
+// ────────────────────────────────────────────────────────
+
+void telaAcessoLiberado(int id) {
+
+  String dataHora = obterDataHora();
+
+  tft.fillScreen(TFT_BLACK);
+
+  // TITULO
+  tft.setTextSize(3);
+  tft.setTextColor(TFT_GREEN, TFT_BLACK);
+
+  tft.setCursor(10, 10);
+  tft.println("ACESSO LIBERADO");
+
+  // INFO
+  tft.setTextSize(2);
+
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+
+  // ID
+  tft.setCursor(10, 90);
+  tft.print("ID: ");
+  tft.println(id);
+
+  // DATA E HORA
+  tft.setCursor(10, 120);
+  tft.println(dataHora);
+
+  // SERIAL
+  Serial.println("\n===== ACESSO LIBERADO =====");
+
+  Serial.print("ID: ");
+  Serial.println(id);
+
+  Serial.print("Data/Hora: ");
+  Serial.println(dataHora);
+
+  Serial.println("===========================");
+}
+
+// ────────────────────────────────────────────────────────
+// ACESSO NEGADO
+// ────────────────────────────────────────────────────────
+
+void telaAcessoNegado() {
+
+  tft.fillScreen(TFT_BLACK);
+
+  tft.setTextSize(3);
+
+  tft.setTextColor(TFT_RED, TFT_BLACK);
+
+  tft.setCursor(10, 10);
+  tft.println("ACESSO NEGADO");
+
+  tft.setTextSize(2);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.setCursor(10, 60);
+  tft.println("DIGITAL NAO RECONHECIDA");
+}
+
+// ────────────────────────────────────────────────────────
+// GERAR NOVO ID
+// ────────────────────────────────────────────────────────
 
 int gerarNovoID() {
-  Serial.println("[ID] Procurando slot livre...");
+
   for (int i = 1; i <= 127; i++) {
-    // loadModel é seguro aqui porque ainda não capturamos nenhuma imagem.
-    // Retorna FINGERPRINT_OK se o slot i tem modelo salvo.
-    uint8_t resultado = finger.loadModel(i);
-    if (resultado != FINGERPRINT_OK) {
-      Serial.print("[ID] Slot livre encontrado: ");
-      Serial.println(i);
+
+    if (finger.loadModel(i) != FINGERPRINT_OK) {
       return i;
     }
   }
-  Serial.println("[ID] Memória cheia (127/127 slots ocupados)");
-  return -1; // Memória cheia
+
+  return -1;
 }
 
-// CADASTRAR DIGITAL 
-void cadastrarDigital() {
-  uint8_t p;
+// ────────────────────────────────────────────────────────
+// CADASTRAR DIGITAL
+// ────────────────────────────────────────────────────────
 
-  // ── PASSO 0: Reservar o ID ANTES de qualquer captura ──────
-  // CORREÇÃO 2 (continuação): O ID é gerado ANTES de capturar imagens,
-  // evitando que loadModel() sobrescreva os CharBuffers durante o processo.
+void cadastrarDigital() {
+
   int novoID = gerarNovoID();
+
   if (novoID == -1) {
-    Serial.println("[CAD] Memória cheia. Apague digitais antigas.");
+
+    telaMensagem("Erro", "Memoria cheia", TFT_RED);
+
     somErro();
+
     return;
   }
-  Serial.print("[CAD] ID reservado para esta digital: ");
+
+  telaMensagem("Cadastro", "Coloque o dedo", TFT_CYAN);
+
+  Serial.print("Novo ID: ");
   Serial.println(novoID);
 
-  // PASSO 1: Primeira leitura
-  Serial.println("[CAD] Coloque o dedo para 1ª leitura...");
-  p = FINGERPRINT_NOFINGER;
-  while (p != FINGERPRINT_OK) {
-    p = finger.getImage();
-    if (p == FINGERPRINT_NOFINGER) continue;
-    if (p != FINGERPRINT_OK) {
-      Serial.print("[CAD] Erro na 1ª captura, código: ");
-      Serial.println(p);
-      somErro();
-      return;
-    }
-  }
-  Serial.println("[CAD] Imagem 1 capturada.");
+  while (finger.getImage() != FINGERPRINT_OK);
 
-  // Converte para CharBuffer 1
-  p = finger.image2Tz(1);
-  if (p != FINGERPRINT_OK) {
-    Serial.print("[CAD] Erro ao converter imagem 1, código: ");
-    Serial.println(p);
+  if (finger.image2Tz(1) != FINGERPRINT_OK) {
+
+    telaMensagem("Erro", "Falha leitura", TFT_RED);
+
     somErro();
+
     return;
   }
-  Serial.println("[CAD] CharBuffer 1 preenchido.");
 
-  // ── PASSO 2: Verificar duplicidade ANTES de prosseguir ─────
-  // Usa fingerFastSearch que compara CharBuffer 1 contra todo o banco
-  p = finger.fingerFastSearch();
-  if (p == FINGERPRINT_OK) {
-    Serial.print("[CAD] Digital já cadastrada no ID: ");
-    Serial.print(finger.fingerID);
-    Serial.print(" | Confiança: ");
-    Serial.println(finger.confidence);
-    somErro();
-    return;
-  }
-  if (p != FINGERPRINT_NOTFOUND) {
-    Serial.print("[CAD] Erro na verificação de duplicidade, código: ");
-    Serial.println(p);
-    somErro();
-    return;
-  }
-  Serial.println("[CAD] Digital nova — sem duplicidade.");
+  // Verifica duplicidade
+if (finger.fingerFastSearch() == FINGERPRINT_OK) {
 
-  // PASSO 3: Remover dedo 
-  Serial.println("[CAD] Remova o dedo...");
-  delay(500);
-  while (finger.getImage() != FINGERPRINT_NOFINGER) delay(100);
-  delay(300);
+  tft.fillScreen(TFT_BLACK);
 
-  // PASSO 4: Segunda leitura 
-  Serial.println("[CAD] Coloque o MESMO dedo novamente para 2ª leitura...");
-  p = FINGERPRINT_NOFINGER;
-  while (p != FINGERPRINT_OK) {
-    p = finger.getImage();
-    if (p == FINGERPRINT_NOFINGER) continue;
-    if (p != FINGERPRINT_OK) {
-      Serial.print("[CAD] Erro na 2ª captura, código: ");
-      Serial.println(p);
-      somErro();
-      return;
-    }
-  }
-  Serial.println("[CAD] Imagem 2 capturada.");
+  tft.setTextSize(3);
+  tft.setTextColor(TFT_RED, TFT_BLACK);
 
-  // Converte para CharBuffer 2
-  p = finger.image2Tz(2);
-  if (p != FINGERPRINT_OK) {
-    Serial.print("[CAD] Erro ao converter imagem 2, código: ");
-    Serial.println(p);
-    somErro();
-    return;
-  }
-  Serial.println("[CAD] CharBuffer 2 preenchido.");
+  tft.setCursor(10, 10);
+  tft.println("DIGITAL JA EXISTE");
 
-  // PASSO 5: Criar modelo combinando CharBuffer 1 + 2 
-  p = finger.createModel();
-  if (p == FINGERPRINT_ENROLLMISMATCH) {
-    Serial.println("[CAD] ERRO: As duas leituras não coincidem. Tente novamente.");
-    somErro();
-    return;
-  }
-  if (p != FINGERPRINT_OK) {
-    Serial.print("[CAD] Erro ao criar modelo, código: ");
-    Serial.println(p);
-    somErro();
-    return;
-  }
-  Serial.println("[CAD] Modelo criado com sucesso.");
+  tft.setTextSize(2.5);
 
-  // PASSO 6: Salvar no slot reservado
-  // CORREÇÃO 2: novoID já foi calculado na etapa 0, antes de qualquer
-  // captura — os CharBuffers não foram tocados desde então.
-  p = finger.storeModel(novoID);
-  if (p == FINGERPRINT_OK) {
-    Serial.print("[CAD] ✔ Digital cadastrada com sucesso! ID: ");
-    Serial.println(novoID);
-    imprimirDataHora();
-    digitalWrite(LED_BIOMETRIA, HIGH);
-    tocarMario();
-    delay(300);
-    digitalWrite(LED_BIOMETRIA, LOW);
-  } else {
-    Serial.print("[CAD] Erro ao salvar no slot ");
-    Serial.print(novoID);
-    Serial.print(", código: ");
-    Serial.println(p);
-    somErro();
-  }
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+
+  tft.setCursor(10, 90);
+  tft.print("Cadastrada no ID: ");
+  tft.println(finger.fingerID);
+
+  Serial.print("Digital ja cadastrada no ID: ");
+  Serial.println(finger.fingerID);
+
+  somErro();
+
+  delay(3000);
+
+  telaAguardando();
+
+  return;
 }
+  telaMensagem("Remova", "Retire o dedo", TFT_YELLOW);
 
-// AUTENTICAR DIGITAL 
-void autenticarDigital() {
-  uint8_t p = finger.getImage();
+  delay(2000);
 
-  // Dedo ausente 
-  if (p == FINGERPRINT_NOFINGER) {
-    if (dedoPresente) {
-      // O dedo foi removido: resetar todos os estados
-      dedoPresente        = false;
-      autenticado         = false;
-      ultimoIDAutenticado = -1;
-      Serial.println("[AUTH] Dedo removido — aguardando...");
-    }
-    return; // nada a fazer sem dedo
-  }
+  while (finger.getImage() != FINGERPRINT_NOFINGER);
 
-  // Erro real na captura da imagem
-  if (p != FINGERPRINT_OK) {
-    Serial.print("[AUTH] Erro na captura de imagem, código: ");
-    Serial.println(p);
+  // Segunda verificacao
+  telaMensagem("Verificacao", "Mesmo dedo novamente", TFT_CYAN);
+
+  while (finger.getImage() != FINGERPRINT_OK);
+
+  if (finger.image2Tz(2) != FINGERPRINT_OK) {
+
+    telaMensagem("Erro", "Falha leitura", TFT_RED);
+
+    somErro();
+
     return;
   }
 
-  // Dedo detectado
-  if (!dedoPresente) {
-    dedoPresente = true;
-    Serial.println("[AUTH] Dedo detectado — processando...");
-  }
+  if (finger.createModel() != FINGERPRINT_OK) {
 
-  // Se já autenticado este evento de toque, não reprocessa
-  if (autenticado) return;
+    telaMensagem("Erro", "Digitais diferentes", TFT_RED);
 
-  // Converter imagem para CharBuffer 1 
-  p = finger.image2Tz(1);
-  if (p != FINGERPRINT_OK) {
-    Serial.print("[AUTH] Erro na conversão da imagem, código: ");
-    Serial.println(p);
+    somErro();
+
+    delay(2000);
+
+    telaAguardando();
+
     return;
   }
 
-  // Busca rápida em TODO o banco do sensor
-  p = finger.fingerFastSearch();
+  // Salva
+  if (finger.storeModel(novoID) == FINGERPRINT_OK) {
 
-  if (p == FINGERPRINT_OK) {
-    // MATCH ENCONTRADO 
-    autenticado         = true;
-    ultimoIDAutenticado = finger.fingerID;
+    telaMensagem("Sucesso", "Cadastro Realizado", TFT_GREEN);
 
-    Serial.println("\n[AUTH] ✔ DIGITAL RECONHECIDA!");
-    Serial.print("[AUTH] ID do usuário: ");
-    Serial.println(finger.fingerID);
-    Serial.print("[AUTH] Score de confiança: ");
-    Serial.print(finger.confidence);
-    Serial.println(" (0–300, quanto maior melhor)");
-    imprimirDataHora();
+    Serial.println("Cadastro realizado!");
 
     digitalWrite(LED_BIOMETRIA, HIGH);
-    tocarMario();
-    delay(300);
+
+    somSucesso();
+
+    delay(2500);
+
     digitalWrite(LED_BIOMETRIA, LOW);
 
-  } else if (p == FINGERPRINT_NOTFOUND) {
-    // NENHUM MATCH 
-    // Não resetar dedoPresente aqui — o dedo ainda está apoiado.
-    // Apenas informar. O reset ocorre quando o dedo for removido.
-    Serial.println("[AUTH] ✘ Digital não reconhecida.");
-    somErro();
-
   } else {
-    // ERRO NO SENSOR
-    Serial.print("[AUTH] Erro no fingerFastSearch, código: ");
-    Serial.println(p);
+
+    telaMensagem("Erro", "Falha ao salvar", TFT_RED);
+
+    somErro();
   }
+
+  telaAguardando();
 }
 
-// LISTAR 
+// ────────────────────────────────────────────────────────
+// LISTAR DIGITAIS
+// ────────────────────────────────────────────────────────
+
 void listarDigitais() {
-  Serial.println("\n--- IDs cadastrados ---");
-  bool algumEncontrado = false;
-  int  total = 0;
+
+  Serial.println("\nIDs cadastrados:");
+
+  bool encontrou = false;
 
   for (int i = 1; i <= 127; i++) {
-    // loadModel é seguro aqui pois não está em processo de cadastro
+
     if (finger.loadModel(i) == FINGERPRINT_OK) {
-      Serial.print("  Slot ");
+
+      Serial.print("ID: ");
       Serial.println(i);
-      algumEncontrado = true;
-      total++;
+
+      encontrou = true;
     }
   }
 
-  if (!algumEncontrado) {
-    Serial.println("  Nenhuma digital cadastrada.");
-  } else {
-    Serial.print("  Total: ");
-    Serial.print(total);
-    Serial.println(" digital(is)");
+  if (!encontrou) {
+    Serial.println("Nenhuma digital cadastrada.");
   }
-  Serial.println("----------------------");
 }
 
-// APAGAR 
-void apagarDigital() {
-  Serial.println("[DEL] Digite o ID para apagar (1–127):");
-  while (!Serial.available()) delay(10);
-  int id = Serial.parseInt();
-  Serial.read(); // consumir '\n' residual
+// ────────────────────────────────────────────────────────
+// APAGAR DIGITAL
+// ────────────────────────────────────────────────────────
 
-  if (id < 1 || id > 127) {
-    Serial.println("[DEL] ID inválido. Use valores entre 1 e 127.");
-    return;
-  }
+void apagarDigital() {
+
+  telaMensagem("Apagar", "Digite ID no Serial", TFT_YELLOW);
+
+  Serial.println("Digite o ID:");
+
+  while (!Serial.available());
+
+  int id = Serial.parseInt();
 
   if (finger.deleteModel(id) == FINGERPRINT_OK) {
-    Serial.print("[DEL] ID ");
-    Serial.print(id);
-    Serial.println(" apagado com sucesso.");
+
+    telaMensagem("Sucesso", "Digital apagada", TFT_GREEN);
+
+    Serial.println("Digital apagada.");
+
+    beep(700, 150);
+
   } else {
-    Serial.print("[DEL] Erro ao apagar ID ");
-    Serial.print(id);
-    Serial.println(". O slot pode já estar vazio.");
+
+    telaMensagem("Erro", "Falha ao apagar", TFT_RED);
+
+    somErro();
   }
+
+  delay(2000);
+
+  telaAguardando();
 }
 
-// SETUP
-void setup() {
-  Serial.begin(115200);
+// ────────────────────────────────────────────────────────
+// APAGAR TODAS
+// ────────────────────────────────────────────────────────
 
-  pinMode(BUZZER,        OUTPUT);
-  pinMode(LED_WIFI,      OUTPUT);
-  pinMode(LED_BIOMETRIA, OUTPUT);
-  digitalWrite(LED_WIFI,      LOW);
-  digitalWrite(LED_BIOMETRIA, LOW);
+void apagarTodasDigitais() {
 
-  conectarWiFi();
-  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  telaMensagem("ATENCAO", "Apagar todas? S/N", TFT_YELLOW);
 
-  mySerial.begin(57600, SERIAL_8N1, RXD2, TXD2);
-  finger.begin(57600);
+  Serial.println("Apagar todas? S/N");
 
-  if (!finger.verifyPassword()) {
-    Serial.println("[SENSOR] SENSOR NÃO ENCONTRADO — verifique conexão e alimentação.");
-    while (1) delay(1000);
+  while (!Serial.available());
+
+  String resp = Serial.readStringUntil('\n');
+
+  resp.trim();
+  resp.toUpperCase();
+
+  if (resp == "S") {
+
+    if (finger.emptyDatabase() == FINGERPRINT_OK) {
+
+      telaMensagem(
+        "Sucesso",
+        "Todas as digitais foram  apagadas",
+        TFT_GREEN
+      );
+
+      Serial.println("Todas as digitais foram apagadas.");
+
+      beep(700, 150);
+      delay(100);
+      beep(700, 150);
+
+      delay(3000);
+
+    } else {
+
+      telaMensagem("Erro", "Falha ao apagar", TFT_RED);
+
+      somErro();
+
+      delay(2000);
+    }
+
+  } else {
+
+    telaMensagem("Cancelado", "Operacao cancelada", TFT_YELLOW);
+
+    Serial.println("Operacao cancelada.");
+
+    delay(2000);
   }
 
-  // CORREÇÃO 1: Security Level ajustado de 5 → 3
-  // O AS608/R307 suporta 5 níveis de segurança. O nível define o
-  // threshold mínimo de score para aceitar um match em fingerFastSearch
+  telaAguardando();
+}
+
+// ────────────────────────────────────────────────────────
+// MENU
+// ────────────────────────────────────────────────────────
+
+void mostrarMenu() {
+
+  Serial.println("\n===== MENU =====");
+
+  Serial.println("1 - Cadastrar");
+  Serial.println("2 - Listar");
+  Serial.println("3 - Apagar");
+  Serial.println("4 - Apagar Tudo");
+
+  Serial.println("================");
+}
+
+// ────────────────────────────────────────────────────────
+// SETUP
+// ────────────────────────────────────────────────────────
+
+void setup() {
+
+  Serial.begin(115200);
+
+  pinMode(LED_WIFI, OUTPUT);
+  pinMode(LED_BIOMETRIA, OUTPUT);
+
+  digitalWrite(LED_WIFI, LOW);
+  digitalWrite(LED_BIOMETRIA, LOW);
+
+  // BUZZER
+  ledcAttach(BUZZER, 2000, 8);
+
+  // WIFI
+  WiFi.mode(WIFI_STA);
+
+  WiFi.begin(ssid, password);
+
+  // CONFIGURA DATA E HORA
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+
+  // DISPLAY
+  tft.init();
+  tft.setRotation(1);
+
+  telaIniciando();
+
+  // SENSOR
+  mySerial.begin(57600, SERIAL_8N1, RXD_BIO, TXD_BIO);
+
+  finger.begin(57600);
+
+  delay(500);
+
+  if (!finger.verifyPassword()) {
+
+    telaMensagem("Erro", "Sensor nao encontrado", TFT_RED);
+
+    Serial.println("Sensor nao encontrado!");
+
+    while (1) {
+      delay(1);
+    }
+  }
 
   finger.setSecurityLevel(3);
 
-  // Informações do sensor
-  finger.getParameters();
-  Serial.println("\n[SENSOR] Sensor inicializado com sucesso.");
-  Serial.print("[SENSOR] Capacidade máxima: ");
-  Serial.print(finger.capacity);
-  Serial.println(" digitais");
+  Serial.println("Sistema iniciado!");
 
-  // Contagem de templates já armazenados
-  finger.getTemplateCount();
-  Serial.print("[SENSOR] Digitais cadastradas: ");
-  Serial.println(finger.templateCount);
+  beep(900, 100);
+  delay(100);
+  beep(1200, 150);
 
-  Serial.println("[SENSOR] Security Level: 3 (threshold ~35/300)");
-  Serial.println("[SISTEMA] Pronto para uso!");
+  telaAguardando();
 
   mostrarMenu();
 }
 
+// ────────────────────────────────────────────────────────
 // LOOP
-void loop() {
-  // Autenticação contínua em background
-  autenticarDigital();
+// ────────────────────────────────────────────────────────
 
-  // Comandos via Serial
+void loop() {
+
+  conectarWiFi();
+
+  uint8_t p = finger.getImage();
+
+  if (p == FINGERPRINT_OK) {
+
+    p = finger.image2Tz(1);
+
+    if (p == FINGERPRINT_OK) {
+
+      p = finger.fingerFastSearch();
+
+      if (p == FINGERPRINT_OK) {
+
+        telaAcessoLiberado(finger.fingerID);
+
+        digitalWrite(LED_BIOMETRIA, HIGH);
+
+        somDuplo();
+
+        delay(3000);
+
+        digitalWrite(LED_BIOMETRIA, LOW);
+
+        telaAguardando();
+
+      } else if (p == FINGERPRINT_NOTFOUND) {
+
+        telaAcessoNegado();
+
+        Serial.println("ACESSO NEGADO");
+
+        somErro();
+
+        delay(2000);
+
+        telaAguardando();
+      }
+    }
+  }
+
+  // COMANDOS SERIAL
   if (Serial.available()) {
+
     String entrada = Serial.readStringUntil('\n');
+
     entrada.trim();
 
-    if (entrada == "1")
+    if (entrada == "1") {
+
       cadastrarDigital();
-    else if (entrada == "2")
+
+    } else if (entrada == "2") {
+
       listarDigitais();
-    else if (entrada == "3")
+
+    } else if (entrada == "3") {
+
       apagarDigital();
-    else {
-      Serial.print("[MENU] Opção inválida: '");
-      Serial.print(entrada);
-      Serial.println("'");
+
+    } else if (entrada == "4") {
+
+      apagarTodasDigitais();
+
+    } else {
+
+      Serial.println("Opcao invalida");
     }
+
+    telaAguardando();
 
     mostrarMenu();
   }
