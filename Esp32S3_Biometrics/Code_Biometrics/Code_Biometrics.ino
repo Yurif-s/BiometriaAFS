@@ -18,14 +18,14 @@ TFT_eSPI tft = TFT_eSPI();
 #define TXD_BIO        18
 
 // ── WIFI ────────────────────────────────────────────────
-const char* ssid = "ASUS Vivobook Go 14/15";
-const char* password = "123456789";
+const char* ssid = "Sua_Rede_WiFi";
+const char* password = "Sua_Senha_WiFi";
 
 bool wifiConectado = false;
 unsigned long ultimoTesteWifi = 0;
 
 // ── NTP / DATA E HORA ──────────────────────────────────
-const char* ntpServer = "pool.ntp.org";
+const char* ntpServer = "time.google.com";
 const long gmtOffset_sec = -3 * 3600;
 const int daylightOffset_sec = 0;
 
