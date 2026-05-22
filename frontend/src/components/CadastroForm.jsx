@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FaSave, FaUndo, FaFingerprint, FaArrowAltCircleRight, FaTrash } from "react-icons/fa";
 import StatusBanner from "./StatusBanner";
+import { useWebSocket } from "../hooks/useWebSocket";
 
 const emptyForm = { nome: "", matricula: "", turma: "", digital: "" };
 const emptyErrors = { nome: false, matricula: false, turma: false };
@@ -12,6 +13,7 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
   const [biometricLoading, setBiometricLoading] = useState(false);
   const [savingAnim, setSavingAnim] = useState(false);
   const [clearingAnim, setClearingAnim] = useState(false);
+  const [aguardandoBio, setAguardandoBio] = useState(false);
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -37,23 +39,39 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
     setStep(2);
   };
 
+  const handleBiometriaRecebida = useCallback(({ biometriaId, alunoNome }) => {
+    if (!aguardandoBio) return;
+    if (alunoNome) {
+      // biometria já cadastrada — avisa e não avança
+      showToast(`Digital já pertence a ${alunoNome}`, 'error');
+      setAguardandoBio(false);
+      return;
+    }
+    setFormData(prev => ({ ...prev, biometria: biometriaId }));
+    setAguardandoBio(false);
+    setStep(3);
+  }, [aguardandoBio]);
+
+  useWebSocket(handleBiometriaRecebida);
+
   const handleCollectDigital = () => {
-    if (biometricLoading) return;
-    setBiometricLoading(true);
-    setTimeout(() => {
-      const generatedDigital = `BIO-${Math.floor(100000 + Math.random() * 900000)}`;
-      setFormData((prev) => ({ ...prev, digital: generatedDigital }));
-      setBiometricLoading(false);
-      setStep(3);
-    }, 2000);
+    setAguardandoBio(true); // a tela fica "ouvindo"
   };
 
-  const handleFinalSave = () => {
-    const success = onSave(formData);
-    if (success) {
+  const handleFinalSave = async () => {
+    try {
+      await addAluno({
+        nome: formData.nome.trim(),
+        matricula: formData.matricula.trim(),
+        biometria: formData.biometria,   // número vindo do ESP32
+        turma_id: Number(formData.turma_id),     // ID numérico da turma
+      });
       setFormData(emptyForm);
-      setErrors(emptyErrors);
       setStep(1);
+      showToast(`Aluno "${formData.nome}" cadastrado!`);
+    } catch (err) {
+      const msg = err.response?.data?.message ?? 'Erro ao salvar';
+      showToast(msg, 'error');
     }
   };
 
@@ -105,9 +123,7 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
               >
                 <option value="">Selecione a turma</option>
                 {turmaOptions.map((turma) => (
-                  <option key={turma} value={turma}>
-                    {turma}
-                  </option>
+                  <option key={turma.id} value={turma.id}>{turma.nome}</option>
                 ))}
               </select>
               {errors.turma && <small className="error-msg">Campo obrigatório</small>}

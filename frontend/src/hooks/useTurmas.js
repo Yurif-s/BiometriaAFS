@@ -1,51 +1,50 @@
-import { useState, useEffect } from "react";
-
-const turmasDefault = [
-  { id: 1, nome: "1ª Informática", ano: 2025 },
-  { id: 2, nome: "2ª Informática", ano: 2025 },
-  { id: 3, nome: "3º Desenvolvimento de Sistemas", ano: 2025 },
-];
+// frontend/src/hooks/useTurmas.js
+import { useState, useEffect, useCallback } from 'react';
+import * as api from '../services/api';
 
 export function useTurmas() {
-  const [turmas, setTurmas] = useState(() => {
-    const saved = localStorage.getItem("turmas");
-    return saved ? JSON.parse(saved) : turmasDefault;
-  });
+  const [turmas, setTurmas] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    localStorage.setItem("turmas", JSON.stringify(turmas));
-  }, [turmas]);
+  const fetchTurmas = useCallback(async () => {
+    try {
+      const data = await api.getTurmas();
+      setTurmas(data);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const addTurma = (turma) => {
-    const nova = {
-      id: Date.now(),
+  useEffect(() => { fetchTurmas(); }, [fetchTurmas]);
+
+  const addTurma = async (turma) => {
+    const nova = await api.createTurma({
       nome: turma.nome.trim(),
-      ano: turma.ano,
-    };
-    setTurmas((prev) => [nova, ...prev]);
+      ano: Number(turma.ano),
+    });
+    setTurmas(prev => [nova, ...prev]);
     return nova;
   };
 
-  const updateTurma = (id, dados) => {
-    setTurmas((prev) =>
-      prev.map((t) =>
-        t.id === id ? { ...t, nome: dados.nome.trim(), ano: Number(dados.ano) } : t
-      )
-    );
+  const updateTurma = async (id, dados) => {
+    const atualizada = await api.updateTurma(id, {
+      nome: dados.nome.trim(),
+      ano: Number(dados.ano),
+    });
+    setTurmas(prev => prev.map(t => t.id === id ? atualizada : t));
   };
 
-  const deleteTurma = (id) => {
-    setTurmas((prev) => prev.filter((t) => t.id !== id));
+  const deleteTurma = async (id) => {
+    await api.deleteTurma(id);
+    setTurmas(prev => prev.filter(t => t.id !== id));
   };
 
   const turmaExists = (nome, excludeId = null) =>
     turmas.some(
-      (t) =>
-        t.nome.toLowerCase() === nome.toLowerCase().trim() &&
-        t.id !== excludeId
+      t => t.nome.toLowerCase() === nome.toLowerCase().trim() && t.id !== excludeId
     );
 
-  const turmaOptions = turmas.map((t) => t.nome);
+  const turmaOptions = turmas.map(t => ({ id: t.id, nome: t.nome }));
 
-  return { turmas, turmaOptions, addTurma, updateTurma, deleteTurma, turmaExists };
+  return { turmas, turmaOptions, loading, addTurma, updateTurma, deleteTurma, turmaExists };
 }

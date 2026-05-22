@@ -1,52 +1,36 @@
-import { useState, useEffect } from "react";
-
-const initialAlunos = [
-  {
-    nome: "Maria Eduarda Silva",
-    matricula: "2025001",
-    turma: "1ª Informática",
-    digital: "12345",
-  },
-  {
-    nome: "João Pedro Santos",
-    matricula: "2025002",
-    turma: "1ª Informática",
-    digital: "12346",
-  },
-  {
-    nome: "Ana Beatriz Lima",
-    matricula: "2025003",
-    turma: "2ª Informática",
-    digital: "12347",
-  },
-];
+import { useState, useEffect, useCallback } from 'react';
+import * as api from '../services/api';
 
 export function useAlunos() {
-  const [alunos, setAlunos] = useState(() => {
-    const saved = localStorage.getItem("alunos");
-    return saved ? JSON.parse(saved) : initialAlunos;
-  });
+  const [alunos, setAlunos] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    localStorage.setItem("alunos", JSON.stringify(alunos));
-  }, [alunos]);
+  const fetchAlunos = useCallback(async () => {
+    try {
+      const data = await api.getAlunos();
+      setAlunos(data);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const addAluno = (aluno) => {
-    setAlunos((prev) => [aluno, ...prev]);
+  useEffect(() => { fetchAlunos(); }, [fetchAlunos]);
+
+  const addAluno = async (dto) => {
+    const novo = await api.createAluno(dto);
+    setAlunos(prev => [novo, ...prev]);
+    return novo;
   };
 
-  const updateAluno = (updated) => {
-    setAlunos((prev) =>
-      prev.map((a) => (a.matricula === updated.matricula ? updated : a))
-    );
+  const updateAluno = async (id, dto) => {
+    const atualizado = await api.updateAluno(id, dto);
+    setAlunos(prev => prev.map(a => a.id === id ? atualizado : a));
   };
 
-  const deleteAluno = (matricula) => {
-    setAlunos((prev) => prev.filter((a) => a.matricula !== matricula));
+  const deleteAluno = async (id) => {
+    await api.deleteAluno(id);
+    setAlunos(prev => prev.filter(a => a.id !== id));
   };
 
-  const matriculaExists = (matricula) =>
-    alunos.some((a) => a.matricula === matricula);
-
-  return { alunos, addAluno, updateAluno, deleteAluno, matriculaExists };
+  return { alunos, loading, addAluno, updateAluno, deleteAluno, refetch: fetchAlunos };
 }

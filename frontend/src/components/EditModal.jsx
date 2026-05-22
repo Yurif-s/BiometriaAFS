@@ -29,9 +29,7 @@ export default function EditModal({ editingForm, turmaOptions, onChange, onUpdat
             >
               <option value="">Selecione a turma</option>
               {turmaOptions.map((turma) => (
-                <option key={turma} value={turma}>
-                  {turma}
-                </option>
+                <option key={turma.id} value={turma.id}>{turma.nome}</option>
               ))}
             </select>
           </div>
