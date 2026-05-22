@@ -27,18 +27,28 @@ function App() {
   // Edit
   const [editingForm, setEditingForm] = useState(null);
 
-  const handleEditClick = (aluno) => setEditingForm({ ...aluno });
+  const handleEditClick = (aluno) => setEditingForm({ ...aluno, turma_id: aluno.turma_id ?? aluno.turma?.id });
   const handleEditChange = (field, value) =>
     setEditingForm((prev) => ({ ...prev, [field]: value }));
 
-  const handleUpdate = () => {
-    if (!editingForm.nome.trim() || !editingForm.matricula.trim() || !editingForm.turma.trim()) {
+  const handleUpdate = async () => {
+    if (!editingForm.nome.trim() || !editingForm.matricula.trim() || (!editingForm.turma_id && !editingForm.turma?.id)) {
       showMsg("Preencha nome, matrícula e turma para atualizar.", 3000);
       return;
     }
-    updateAluno(editingForm);
-    showMsg("Dados salvos");
-    setEditingForm(null);
+    try {
+      await updateAluno(editingForm.id, {
+        nome: editingForm.nome.trim(),
+        matricula: editingForm.matricula.trim(),
+        biometria: Number(editingForm.biometria),
+        turma_id: Number(editingForm.turma_id ?? editingForm.turma?.id),
+      });
+      showToast("Dados salvos com sucesso!");
+      setEditingForm(null);
+    } catch (err) {
+      const msg = err.response?.data?.message ?? "Erro ao salvar alterações.";
+      showToast(msg, "error");
+    }
   };
 
   // Delete aluno
@@ -51,17 +61,20 @@ function App() {
     setShowDeleteConfirm(true);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     setDeleteLoading(true);
-    setTimeout(() => {
-      deleteAluno(deleteTarget.matricula);
-      setDeleteLoading(false);
-      setShowDeleteConfirm(false);
+    try {
+      await deleteAluno(deleteTarget.id);
       const nome = deleteTarget.nome;
-      setDeleteTarget(null);
-      // 🎉 Toast de sucesso
       showToast(`Aluno "${nome}" removido com sucesso.`);
-    }, 800);
+      setShowDeleteConfirm(false);
+      setDeleteTarget(null);
+    } catch (err) {
+      const msg = err.response?.data?.message ?? 'Erro ao remover aluno';
+      showToast(msg, 'error');
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   const handleDeleteCancel = () => {
@@ -70,19 +83,25 @@ function App() {
   };
 
   // Cadastro
-  const handleCadastroSave = (formData) => {
-    if (matriculaExists(formData.matricula.trim())) {
+  const handleCadastroSave = async (formData) => {
+    if (matriculaExists && matriculaExists(formData.matricula.trim())) {
       showToast("Já existe um aluno com essa matrícula.", "error");
       return false;
     }
-    addAluno({
-      nome: formData.nome.trim(),
-      matricula: formData.matricula.trim(),
-      turma: formData.turma.trim(),
-      digital: formData.digital.trim() || "-",
-    });
-    showToast(`Aluno "${formData.nome.trim()}" cadastrado com sucesso!`);
-    return true;
+    try {
+      await addAluno({
+        nome: formData.nome.trim(),
+        matricula: formData.matricula.trim(),
+        biometria: Number(formData.biometria),
+        turma_id: Number(formData.turma),
+      });
+      showToast(`Aluno "${formData.nome.trim()}" cadastrado com sucesso!`);
+      return true;
+    } catch (err) {
+      const msg = err.response?.data?.message ?? 'Erro ao cadastrar aluno';
+      showToast(msg, "error");
+      return false;
+    }
   };
 
   return (
@@ -148,6 +167,7 @@ function App() {
           onSave={handleCadastroSave}
           showStatus={showStatus}
           statusMessage={statusMessage}
+          showToast={showToast}
         />
 
         <AlunosTable

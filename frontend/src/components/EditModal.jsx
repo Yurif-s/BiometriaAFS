@@ -24,8 +24,8 @@ export default function EditModal({ editingForm, turmaOptions, onChange, onUpdat
           <div className="input-group">
             <label>Turma</label>
             <select
-              value={editingForm.turma}
-              onChange={(e) => onChange("turma", e.target.value)}
+              value={editingForm.turma_id ?? editingForm.turma?.id ?? ""}
+              onChange={(e) => onChange("turma_id", Number(e.target.value))}
             >
               <option value="">Selecione a turma</option>
               {turmaOptions.map((turma) => (
@@ -37,9 +37,9 @@ export default function EditModal({ editingForm, turmaOptions, onChange, onUpdat
           <div className="input-group">
             <label>ID da Digital</label>
             <input
-              type="text"
-              value={editingForm.digital}
-              onChange={(e) => onChange("digital", e.target.value)}
+              type="number"
+              value={editingForm.biometria ?? ""}
+              onChange={(e) => onChange("biometria", Number(e.target.value))}
             />
           </div>
         </div>
