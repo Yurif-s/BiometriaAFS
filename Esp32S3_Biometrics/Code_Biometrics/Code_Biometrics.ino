@@ -5,6 +5,8 @@
 #include <TFT_eSPI.h>
 #include <WiFi.h>
 #include <time.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h> 
 
 // ── DISPLAY ──────────────────────────────────────────────
 TFT_eSPI tft = TFT_eSPI();
@@ -28,6 +30,8 @@ unsigned long ultimoTesteWifi = 0;
 const char* ntpServer = "time.google.com";
 const long gmtOffset_sec = -3 * 3600;
 const int daylightOffset_sec = 0;
+
+const char* API_URL = "http://SEU_IP_BACKEND:3000";
 
 // ── SENSOR BIOMÉTRICO ───────────────────────────────────
 HardwareSerial mySerial(1);
@@ -57,6 +61,25 @@ void somDuplo() {
 
 void somErro() {
   beep(250, 500);
+}
+
+void notificarBackend(int biometriaId) {
+  if (WiFi.status() != WL_CONNECTED) return;
+
+  HTTPClient http;
+  http.begin(String(API_URL) + "/alunos/biometria/leitura");
+  http.addHeader("Content-Type", "application/json");
+
+  String body = "{\"biometria\":" + String(biometriaId) + "}";
+  int httpCode = http.POST(body);
+
+  if (httpCode == 200) {
+    // backend encontrou o aluno — pode exibir o nome no display
+    String payload = http.getString();
+    // parseio opcional com ArduinoJson para mostrar nome no TFT
+  }
+
+  http.end();
 }
 
 // ────────────────────────────────────────────────────────
@@ -617,6 +640,8 @@ void loop() {
       if (p == FINGERPRINT_OK) {
 
         telaAcessoLiberado(finger.fingerID);
+
+        notificarBackend(finger.fingerID);
 
         digitalWrite(LED_BIOMETRIA, HIGH);
 

@@ -17,12 +17,21 @@ import { Aluno } from '@prisma/client';
 
 @Controller('alunos')
 export class AlunoController {
-  constructor(private readonly alunoService: AlunoService) {}
+  constructor(private readonly alunoService: AlunoService) { }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createAlunoDto: CreateAlunoDto): Promise<Aluno> {
     return this.alunoService.create(createAlunoDto);
+  }
+
+  // POST /alunos/biometria/leitura
+  // Chamado pelo ESP32 após identificar uma digital
+  @Post('biometria/leitura')
+  async registrarLeitura(
+    @Body() body: { biometria: number },
+  ): Promise<{ encontrado: boolean; aluno?: Aluno }> {
+    return this.alunoService.registrarLeitura(body.biometria);
   }
 
   @Get()

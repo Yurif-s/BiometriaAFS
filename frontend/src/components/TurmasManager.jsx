@@ -42,16 +42,20 @@ export default function TurmasManager({
         setShowDeleteConfirm(true);
     };
 
-    const handleDeleteConfirm = () => {
+    const handleDeleteConfirm = async () => {
         setDeleteLoading(true);
-        setTimeout(() => {
-            onDelete(deleteTarget.id);
-            setDeleteLoading(false);
-            setShowDeleteConfirm(false);
+        try {
+            await onDelete(deleteTarget.id);
             const nome = deleteTarget.nome;
+            setShowDeleteConfirm(false);
             setDeleteTarget(null);
             if (showToast) showToast(`Turma "${nome}" removida com sucesso.`);
-        }, 800);
+        } catch (err) {
+            const msg = err.response?.data?.message ?? 'Erro ao excluir turma';
+            if (showToast) showToast(msg, 'error');
+        } finally {
+            setDeleteLoading(false);
+        }
     };
 
     const handleDeleteCancel = () => {
@@ -65,7 +69,7 @@ export default function TurmasManager({
         setErrorMsg("");
     };
 
-    const handleAdd = () => {
+    const handleAdd = async () => {
         setAddAnim(true);
         setTimeout(() => setAddAnim(false), 300);
 
@@ -85,12 +89,15 @@ export default function TurmasManager({
             return;
         }
 
-        const nomeTurma = formData.nome.trim();
-        onAdd({ nome: nomeTurma, ano: Number(formData.ano) });
-        setFormData(emptyForm);
-        setErrors(emptyErrors);
-        setErrorMsg("");
-        if (showToast) showToast(`Turma "${nomeTurma}" adicionada com sucesso!`);
+        try {
+            const nomeTurma = formData.nome.trim();
+            await onAdd({ nome: nomeTurma, ano: Number(formData.ano) });
+            setFormData(emptyForm);
+            if (showToast) showToast(`Turma "${nomeTurma}" adicionada com sucesso!`);
+        } catch (err) {
+            const msg = err.response?.data?.message ?? 'Erro ao adicionar turma';
+            setErrorMsg(msg);
+        }
     };
 
     return (

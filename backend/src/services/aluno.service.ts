@@ -9,13 +9,27 @@ import { AlunoRepository } from '../repositories/aluno.repository';
 import { TurmaRepository } from '../repositories/turma.repository';
 import { CreateAlunoDto } from '../dtos/create-aluno.dto';
 import { UpdateAlunoDto } from '../dtos/update-aluno.dto';
+import { BiometriaGateway } from '../gateways/biometria.gateway';
 
 @Injectable()
 export class AlunoService {
   constructor(
     private readonly alunoRepository: AlunoRepository,
     private readonly turmaRepository: TurmaRepository,
-  ) {}
+    private readonly biometriaGateway: BiometriaGateway,
+  ) { }
+
+  async registrarLeitura(biometria: number) {
+    const aluno = await this.alunoRepository.findByBiometria(biometria);
+
+    // Notifica o frontend via WebSocket independente de ter encontrado ou não
+    this.biometriaGateway.emitirBiometriaLida(
+      biometria,
+      aluno?.nome,
+    );
+
+    return { encontrado: !!aluno, aluno: aluno ?? undefined };
+  }
 
   async create(createAlunoDto: CreateAlunoDto): Promise<Aluno> {
     const turma = await this.turmaRepository.findById(createAlunoDto.turma_id);
