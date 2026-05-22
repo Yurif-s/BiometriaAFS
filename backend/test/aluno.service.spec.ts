@@ -8,11 +8,13 @@ import {
 import { AlunoService } from '../src/services/aluno.service';
 import { AlunoRepository } from '../src/repositories/aluno.repository';
 import { TurmaRepository } from '../src/repositories/turma.repository';
+import { BiometriaGateway } from '../src/gateways/biometria.gateway';
 
 describe('AlunoService', () => {
   let service: AlunoService;
   let alunoRepository: jest.Mocked<AlunoRepository>;
   let turmaRepository: jest.Mocked<TurmaRepository>;
+  let biometriaGateway: jest.Mocked<BiometriaGateway>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -37,12 +39,45 @@ describe('AlunoService', () => {
             findById: jest.fn(),
           },
         },
+        {
+          provide: BiometriaGateway,
+          useValue: {
+            emitirBiometriaLida: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<AlunoService>(AlunoService);
     alunoRepository = module.get(AlunoRepository);
     turmaRepository = module.get(TurmaRepository);
+    biometriaGateway = module.get(BiometriaGateway);
+  });
+
+  // =========================
+  // REGISTRAR LEITURA
+  // =========================
+  describe('registrarLeitura', () => {
+    it('deve registrar leitura de um aluno cadastrado e emitir evento', async () => {
+      const alunoMock = { id: 1, nome: 'João', biometria: 123 } as any;
+      alunoRepository.findByBiometria.mockResolvedValue(alunoMock);
+
+      const result = await service.registrarLeitura(123);
+
+      expect(result).toEqual({ encontrado: true, aluno: alunoMock });
+      expect(alunoRepository.findByBiometria).toHaveBeenCalledWith(123);
+      expect(biometriaGateway.emitirBiometriaLida).toHaveBeenCalledWith(123, 'João');
+    });
+
+    it('deve registrar leitura de biometria não cadastrada e emitir evento com nome indefinido', async () => {
+      alunoRepository.findByBiometria.mockResolvedValue(null);
+
+      const result = await service.registrarLeitura(456);
+
+      expect(result).toEqual({ encontrado: false, aluno: undefined });
+      expect(alunoRepository.findByBiometria).toHaveBeenCalledWith(456);
+      expect(biometriaGateway.emitirBiometriaLida).toHaveBeenCalledWith(456, undefined);
+    });
   });
 
   // =========================
