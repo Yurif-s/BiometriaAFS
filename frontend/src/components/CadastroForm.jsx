@@ -1,12 +1,12 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { FaSave, FaUndo, FaFingerprint, FaArrowAltCircleRight, FaTrash } from "react-icons/fa";
 import StatusBanner from "./StatusBanner";
 import { useWebSocket } from "../hooks/useWebSocket";
 
-const emptyForm = { nome: "", matricula: "", turma: "", digital: "" };
+const emptyForm = { nome: "", matricula: "", turma: "", biometria: "" };
 const emptyErrors = { nome: false, matricula: false, turma: false };
 
-export default function CadastroForm({ turmaOptions, onSave, showStatus, statusMessage }) {
+export default function CadastroForm({ turmaOptions, onSave, showStatus, statusMessage, showToast }) {
   const [formData, setFormData] = useState(emptyForm);
   const [errors, setErrors] = useState(emptyErrors);
   const [step, setStep] = useState(1);
@@ -42,36 +42,30 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
   const handleBiometriaRecebida = useCallback(({ biometriaId, alunoNome }) => {
     if (!aguardandoBio) return;
     if (alunoNome) {
-      // biometria já cadastrada — avisa e não avança
-      showToast(`Digital já pertence a ${alunoNome}`, 'error');
+      if (showToast) showToast(`Digital já pertence a ${alunoNome}`, 'error');
       setAguardandoBio(false);
       return;
     }
     setFormData(prev => ({ ...prev, biometria: biometriaId }));
     setAguardandoBio(false);
     setStep(3);
-  }, [aguardandoBio]);
+  }, [aguardandoBio, showToast]);
 
   useWebSocket(handleBiometriaRecebida);
 
   const handleCollectDigital = () => {
-    setAguardandoBio(true); // a tela fica "ouvindo"
+    setAguardandoBio(true);
   };
 
   const handleFinalSave = async () => {
     try {
-      await addAluno({
-        nome: formData.nome.trim(),
-        matricula: formData.matricula.trim(),
-        biometria: formData.biometria,   // número vindo do ESP32
-        turma_id: Number(formData.turma_id),     // ID numérico da turma
-      });
-      setFormData(emptyForm);
-      setStep(1);
-      showToast(`Aluno "${formData.nome}" cadastrado!`);
+      const success = await onSave(formData);
+      if (success) {
+        setFormData(emptyForm);
+        setStep(1);
+      }
     } catch (err) {
-      const msg = err.response?.data?.message ?? 'Erro ao salvar';
-      showToast(msg, 'error');
+      console.error(err);
     }
   };
 
@@ -81,6 +75,8 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
     setFormData(emptyForm);
     setErrors(emptyErrors);
   };
+
+  const selectedTurmaName = turmaOptions.find(t => String(t.id) === String(formData.turma))?.nome ?? formData.turma;
 
   return (
     <section className="card">
@@ -158,7 +154,7 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
             Posicione o dedo no sensor para coletar a digital do aluno
           </p>
           <div className="biometric-preview">
-            <div className={`fingerprint-icon ${biometricLoading ? "loading" : ""}`}>
+            <div className={`fingerprint-icon ${aguardandoBio ? "loading" : ""}`}>
               <FaFingerprint />
             </div>
           </div>
@@ -167,9 +163,9 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
               type="button"
               className="salvar"
               onClick={handleCollectDigital}
-              disabled={biometricLoading}
+              disabled={aguardandoBio}
             >
-              {biometricLoading ? "Coletando..." : "Coletar Digital"}
+              {aguardandoBio ? "Aguardando Digital..." : "Coletar Digital"}
             </button>
             <button type="button" className="limpar" onClick={() => setStep(1)}>
               Voltar
@@ -192,9 +188,9 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
             </div>
             <div className="confirm-row">
               <span className="confirm-label">Turma</span>
-              <strong>{formData.turma}</strong>
+              <strong>{selectedTurmaName}</strong>
             </div>
-            <div className="status-chip">Digital cadastrada ✅</div>
+            <div className="status-chip">Digital cadastrada (ID: {formData.biometria}) ✅</div>
           </div>
           <div className="buttons">
             <button type="button" className="limpar" onClick={() => setStep(1)}>

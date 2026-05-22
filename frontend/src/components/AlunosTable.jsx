@@ -37,8 +37,8 @@ export default function AlunosTable({ alunos, onEdit, onDelete }) {
             <tr key={index}>
               <td>{aluno.nome}</td>
               <td>{aluno.matricula}</td>
-              <td>{aluno.turma}</td>
-              <td>{aluno.digital}</td>
+              <td>{aluno.turma?.nome ?? aluno.turma ?? "Sem Turma"}</td>
+              <td>{aluno.biometria}</td>
               <td className="acoes">
                 <button
                   type="button"

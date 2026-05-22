@@ -9,6 +9,8 @@ export function useAlunos() {
     try {
       const data = await api.getAlunos();
       setAlunos(data);
+    } catch (err) {
+      console.error("Erro ao buscar alunos:", err);
     } finally {
       setLoading(false);
     }
@@ -32,5 +34,11 @@ export function useAlunos() {
     setAlunos(prev => prev.filter(a => a.id !== id));
   };
 
-  return { alunos, loading, addAluno, updateAluno, deleteAluno, refetch: fetchAlunos };
+  const matriculaExists = useCallback((matricula, excludeId = null) => {
+    return alunos.some(
+      a => a.matricula.trim() === matricula.trim() && a.id !== excludeId
+    );
+  }, [alunos]);
+
+  return { alunos, loading, addAluno, updateAluno, deleteAluno, matriculaExists, refetch: fetchAlunos };
 }
