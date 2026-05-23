@@ -2,7 +2,8 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "module": "commonjs",
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "resolvePackageJsonExports": false
   },
   "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
 }
