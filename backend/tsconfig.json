@@ -21,7 +21,6 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@prisma/client": ["./generated/prisma/client.ts"],
       "services/*": [
         "./src/services/*"
       ],
