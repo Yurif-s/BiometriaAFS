@@ -1,14 +1,17 @@
 generator client {
   provider = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL")
 }
 
 model Turma {
-  id     Int     @id @default(autoincrement())
-  nome   String
+  id    Int    @id @default(autoincrement())
+  nome  String
   ano    Int
 
   alunos Aluno[]

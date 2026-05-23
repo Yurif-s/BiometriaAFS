@@ -9,7 +9,7 @@
     window.__ak_selectedTurmaId = null;
 
     // Configurações principais
-    const API_BASE = "http://localhost:3000";
+    const API_BASE = CONFIG?.API_BASE ?? "http://localhost:3000";
     const LS_DATA = "ak_faltosos_num_nome_data_v6";
     const SEL_FREQ = /frequencia_chamada(\?|$)/;
 
