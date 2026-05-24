@@ -53,8 +53,27 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
 
   useWebSocket(handleBiometriaRecebida);
 
-  const handleCollectDigital = () => {
+  const handleCollectDigital = async () => {
     setAguardandoBio(true);
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+      const response = await fetch(`${baseUrl}/alunos/biometria/iniciar-cadastro`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        throw new Error("Erro ao iniciar cadastro de biometria");
+      }
+      const data = await response.json();
+      if (showToast) {
+        showToast(`Sensor ativado! Grave a digital no ID: ${data.id}`, "info");
+      }
+    } catch (error) {
+      console.error(error);
+      if (showToast) {
+        showToast("Erro ao iniciar cadastro no sensor biométrico", "error");
+      }
+      setAguardandoBio(false);
+    }
   };
 
   const handleFinalSave = async () => {
