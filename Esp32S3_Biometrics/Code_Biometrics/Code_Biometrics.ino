@@ -308,9 +308,7 @@ int gerarNovoID() {
 // CADASTRAR DIGITAL
 // ────────────────────────────────────────────────────────
 
-void cadastrarDigital() {
-
-  int novoID = gerarNovoID();
+void cadastrarDigitalComID(int novoID) {
 
   if (novoID == -1) {
 
@@ -415,6 +413,9 @@ if (finger.fingerFastSearch() == FINGERPRINT_OK) {
 
     digitalWrite(LED_BIOMETRIA, LOW);
 
+    // Notifica o backend imediatamente para que o frontend avance
+    notificarBackend(novoID);
+
   } else {
 
     telaMensagem("Erro", "Falha ao salvar", TFT_RED);
@@ -424,6 +425,56 @@ if (finger.fingerFastSearch() == FINGERPRINT_OK) {
 
   telaAguardando();
 }
+
+void cadastrarDigital() {
+  int novoID = gerarNovoID();
+  cadastrarDigitalComID(novoID);
+}
+
+// POLLING DE SOLICITACAO DE CADASTRO
+unsigned long ultimaVerificacaoCadastro = 0;
+const unsigned long intervaloVerificacao = 2000; // 2 segundos
+
+void verificarSolicitacaoCadastro() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  
+  unsigned long tempoAtual = millis();
+  if (tempoAtual - ultimaVerificacaoCadastro < intervaloVerificacao) return;
+  ultimaVerificacaoCadastro = tempoAtual;
+
+  HTTPClient http;
+  http.begin(String(API_URL) + "/alunos/biometria/solicitacao");
+  
+  int httpCode = http.GET();
+  if (httpCode == 200) {
+    String payload = http.getString();
+    
+    // Busca direta na string do JSON para evitar incompatibilidades de biblioteca
+    // Formato esperado: {"cadastrar":true,"id":5}
+    if (payload.indexOf("\"cadastrar\":true") != -1) {
+      int indexId = payload.indexOf("\"id\":");
+      if (indexId != -1) {
+        int inicioNum = indexId + 5;
+        int fimNum = payload.indexOf("}", inicioNum);
+        if (fimNum == -1) fimNum = payload.indexOf(",", inicioNum);
+        if (fimNum != -1) {
+          String idStr = payload.substring(inicioNum, fimNum);
+          idStr.trim();
+          int idParaCadastrar = idStr.toInt();
+          if (idParaCadastrar > 0) {
+            Serial.print("Solicitacao de cadastro recebida do backend para o ID: ");
+            Serial.println(idParaCadastrar);
+            
+            // Inicia o cadastro guiado no sensor
+            cadastrarDigitalComID(idParaCadastrar);
+          }
+        }
+      }
+    }
+  }
+  http.end();
+}
+
 
 // ────────────────────────────────────────────────────────
 // LISTAR DIGITAIS
@@ -626,6 +677,8 @@ void setup() {
 void loop() {
 
   conectarWiFi();
+
+  verificarSolicitacaoCadastro();
 
   uint8_t p = finger.getImage();
 

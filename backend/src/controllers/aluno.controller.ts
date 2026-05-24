@@ -34,6 +34,20 @@ export class AlunoController {
     return this.alunoService.registrarLeitura(body.biometria);
   }
 
+  // POST /alunos/biometria/iniciar-cadastro
+  // Chamado pelo Frontend para iniciar a captura de digital no ESP32
+  @Post('biometria/iniciar-cadastro')
+  async iniciarCadastro(): Promise<{ id: number }> {
+    return this.alunoService.iniciarCadastro();
+  }
+
+  // GET /alunos/biometria/solicitacao
+  // Chamado pelo ESP32 (polling) para verificar se há cadastro solicitado
+  @Get('biometria/solicitacao')
+  async obterSolicitacaoCadastro(): Promise<{ cadastrar: boolean; id?: number }> {
+    return this.alunoService.obterSolicitacaoCadastro();
+  }
+
   @Get()
   async findAll(): Promise<Aluno[]> {
     return this.alunoService.findAll();

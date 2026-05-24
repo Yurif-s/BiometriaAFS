@@ -13,11 +13,44 @@ import { BiometriaGateway } from '../gateways/biometria.gateway';
 
 @Injectable()
 export class AlunoService {
+  private pendingEnrollmentId: number | null = null;
+
   constructor(
     private readonly alunoRepository: AlunoRepository,
     private readonly turmaRepository: TurmaRepository,
     private readonly biometriaGateway: BiometriaGateway,
   ) { }
+
+  async iniciarCadastro(): Promise<{ id: number }> {
+    const alunos = await this.alunoRepository.findAll();
+    const ocupados = new Set(alunos.map(a => a.biometria));
+
+    let proximoId = -1;
+    for (let i = 1; i <= 127; i++) {
+      if (!ocupados.has(i)) {
+        proximoId = i;
+        break;
+      }
+    }
+
+    if (proximoId === -1) {
+      throw new BadRequestException(
+        'Limite de biometrias cadastradas no sensor atingido (máx. 127).'
+      );
+    }
+
+    this.pendingEnrollmentId = proximoId;
+    return { id: proximoId };
+  }
+
+  obterSolicitacaoCadastro(): { cadastrar: boolean; id?: number } {
+    if (this.pendingEnrollmentId !== null) {
+      const id = this.pendingEnrollmentId;
+      this.pendingEnrollmentId = null; // Limpa após leitura (leitura destrutiva)
+      return { cadastrar: true, id };
+    }
+    return { cadastrar: false };
+  }
 
   async registrarLeitura(biometria: number) {
     const aluno = await this.alunoRepository.findByBiometria(biometria);
