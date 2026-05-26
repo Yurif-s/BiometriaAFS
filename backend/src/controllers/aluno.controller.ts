@@ -42,10 +42,28 @@ export class AlunoController {
   }
 
   // GET /alunos/biometria/solicitacao
-  // Chamado pelo ESP32 (polling) para verificar se há cadastro solicitado
+  // Chamado pelo ESP32 (polling) para verificar se há cadastro ou exclusão solicitada
   @Get('biometria/solicitacao')
-  async obterSolicitacaoCadastro(): Promise<{ cadastrar: boolean; id?: number }> {
+  async obterSolicitacaoCadastro(): Promise<{ cadastrar: boolean; deletar: boolean; id?: number }> {
     return this.alunoService.obterSolicitacaoCadastro();
+  }
+
+  // POST /alunos/biometria/solicitacao/ack
+  // Chamado pelo ESP32 para confirmar o recebimento da solicitação de cadastro
+  @Post('biometria/solicitacao/ack')
+  @HttpCode(HttpStatus.OK)
+  async confirmarSolicitacao(): Promise<void> {
+    this.alunoService.confirmarSolicitacao();
+  }
+
+  // POST /alunos/biometria/cancelar-cadastro
+  // Chamado pelo Frontend se a coleta for cancelada/descartada
+  @Post('biometria/cancelar-cadastro')
+  @HttpCode(HttpStatus.OK)
+  async cancelarCadastro(
+    @Body() body: { id: number },
+  ): Promise<void> {
+    return this.alunoService.cancelarCadastro(body.id);
   }
 
   @Get()

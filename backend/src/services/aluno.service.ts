@@ -14,6 +14,11 @@ import { BiometriaGateway } from '../gateways/biometria.gateway';
 @Injectable()
 export class AlunoService {
   private pendingEnrollmentId: number | null = null;
+  private pendingEnrollmentAcked = false;
+  private pendingEnrollmentTime = 0;
+
+  private pendingDeletions: number[] = [];
+  private reservedIds = new Map<number, number>(); // biometriaId -> timestamp
 
   constructor(
     private readonly alunoRepository: AlunoRepository,
@@ -27,7 +32,7 @@ export class AlunoService {
 
     let proximoId = -1;
     for (let i = 1; i <= 127; i++) {
-      if (!ocupados.has(i)) {
+      if (!ocupados.has(i) && !this.reservedIds.has(i)) {
         proximoId = i;
         break;
       }
@@ -40,16 +45,76 @@ export class AlunoService {
     }
 
     this.pendingEnrollmentId = proximoId;
+    this.pendingEnrollmentAcked = false;
+    this.pendingEnrollmentTime = Date.now();
+    this.reservedIds.set(proximoId, Date.now());
+
     return { id: proximoId };
   }
 
-  obterSolicitacaoCadastro(): { cadastrar: boolean; id?: number } {
-    if (this.pendingEnrollmentId !== null) {
-      const id = this.pendingEnrollmentId;
-      this.pendingEnrollmentId = null; // Limpa após leitura (leitura destrutiva)
-      return { cadastrar: true, id };
+  queueDeletion(id: number) {
+    if (!this.pendingDeletions.includes(id)) {
+      this.pendingDeletions.push(id);
     }
-    return { cadastrar: false };
+  }
+
+  async cleanExpiredReservations() {
+    const now = Date.now();
+    const TIMEOUT = 120000; // 2 minutos
+    const expiredIds: number[] = [];
+    for (const [id, timestamp] of this.reservedIds.entries()) {
+      if (now - timestamp > TIMEOUT) {
+        expiredIds.push(id);
+      }
+    }
+
+    for (const id of expiredIds) {
+      this.reservedIds.delete(id);
+      const aluno = await this.alunoRepository.findByBiometria(id);
+      if (!aluno) {
+        this.queueDeletion(id);
+      }
+    }
+  }
+
+  async obterSolicitacaoCadastro(): Promise<{ cadastrar: boolean; deletar: boolean; id?: number }> {
+    await this.cleanExpiredReservations();
+
+    // 1. Verificar se há exclusões pendentes
+    if (this.pendingDeletions.length > 0) {
+      const id = this.pendingDeletions.shift();
+      return { cadastrar: false, deletar: true, id };
+    }
+
+    // 2. Verificar se há cadastro pendente
+    if (this.pendingEnrollmentId !== null) {
+      if (Date.now() - this.pendingEnrollmentTime > 30000) {
+        this.pendingEnrollmentId = null;
+        this.pendingEnrollmentAcked = false;
+        return { cadastrar: false, deletar: false };
+      }
+
+      if (!this.pendingEnrollmentAcked) {
+        return { cadastrar: true, deletar: false, id: this.pendingEnrollmentId };
+      }
+    }
+
+    return { cadastrar: false, deletar: false };
+  }
+
+  confirmarSolicitacao(): void {
+    if (this.pendingEnrollmentId !== null) {
+      this.pendingEnrollmentAcked = true;
+    }
+  }
+
+  async cancelarCadastro(id: number): Promise<void> {
+    this.reservedIds.delete(id);
+    if (this.pendingEnrollmentId === id) {
+      this.pendingEnrollmentId = null;
+      this.pendingEnrollmentAcked = false;
+    }
+    this.queueDeletion(id);
   }
 
   async registrarLeitura(biometria: number) {
@@ -91,7 +156,7 @@ export class AlunoService {
     }
 
     try {
-      return await this.alunoRepository.create({
+      const novoAluno = await this.alunoRepository.create({
         id: 0, // gerado pelo banco
         matricula: createAlunoDto.matricula,
         nome: createAlunoDto.nome,
@@ -100,6 +165,15 @@ export class AlunoService {
         saida: createAlunoDto.saida ? new Date(createAlunoDto.saida) : undefined,
         turma_id: createAlunoDto.turma_id,
       } as Aluno);
+
+      // Remove das reservas e limpa solicitação pendente
+      this.reservedIds.delete(createAlunoDto.biometria);
+      if (this.pendingEnrollmentId === createAlunoDto.biometria) {
+        this.pendingEnrollmentId = null;
+        this.pendingEnrollmentAcked = false;
+      }
+
+      return novoAluno;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro desconhecido';
       throw new BadRequestException('Erro ao criar aluno: ' + message);
@@ -207,10 +281,11 @@ export class AlunoService {
   }
 
   async delete(id: number): Promise<void> {
-    await this.findById(id);
+    const aluno = await this.findById(id);
 
     try {
       await this.alunoRepository.delete(id);
+      this.queueDeletion(aluno.biometria);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro desconhecido';
       throw new BadRequestException('Erro ao deletar aluno: ' + message);

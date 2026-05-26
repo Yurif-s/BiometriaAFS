@@ -336,35 +336,28 @@ void cadastrarDigitalComID(int novoID) {
   }
 
   // Verifica duplicidade
-if (finger.fingerFastSearch() == FINGERPRINT_OK) {
+  if (finger.fingerFastSearch() == FINGERPRINT_OK) {
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+    tft.setCursor(10, 10);
+    tft.println("DIGITAL EXISTENTE");
+    tft.setCursor(10, 40);
+    tft.print("ID Sensor: ");
+    tft.println(finger.fingerID);
 
-  tft.fillScreen(TFT_BLACK);
+    Serial.print("Digital ja cadastrada no ID: ");
+    Serial.println(finger.fingerID);
 
-  tft.setTextSize(3);
-  tft.setTextColor(TFT_RED, TFT_BLACK);
+    // Notifica o backend imediatamente com o ID encontrado no sensor.
+    // Se for uma digital órfã (sem aluno no DB), o frontend associará este ID.
+    notificarBackend(finger.fingerID);
 
-  tft.setCursor(10, 10);
-  tft.println("DIGITAL JA EXISTE");
-
-  tft.setTextSize(2.5);
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-
-  tft.setCursor(10, 90);
-  tft.print("Cadastrada no ID: ");
-  tft.println(finger.fingerID);
-
-  Serial.print("Digital ja cadastrada no ID: ");
-  Serial.println(finger.fingerID);
-
-  somErro();
-
-  delay(3000);
-
-  telaAguardando();
-
-  return;
-}
+    somDuplo(); // Beep duplo para reassociação/reuso
+    delay(3000);
+    telaAguardando();
+    return;
+  }
   telaMensagem("Remova", "Retire o dedo", TFT_YELLOW);
 
   delay(2000);
@@ -431,7 +424,23 @@ void cadastrarDigital() {
   cadastrarDigitalComID(novoID);
 }
 
-// POLLING DE SOLICITACAO DE CADASTRO
+void enviarAckCadastro() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  
+  HTTPClient http;
+  http.begin(String(API_URL) + "/alunos/biometria/solicitacao/ack");
+  http.addHeader("Content-Type", "application/json");
+  int httpCode = http.POST("{}");
+  if (httpCode == 200 || httpCode == 201) {
+    Serial.println("Confirmacao de cadastro (ACK) enviada com sucesso.");
+  } else {
+    Serial.print("Erro ao enviar ACK: ");
+    Serial.println(httpCode);
+  }
+  http.end();
+}
+
+// POLLING DE SOLICITACAO DE CADASTRO E EXCLUSAO
 unsigned long ultimaVerificacaoCadastro = 0;
 const unsigned long intervaloVerificacao = 2000; // 2 segundos
 
@@ -449,8 +458,7 @@ void verificarSolicitacaoCadastro() {
   if (httpCode == 200) {
     String payload = http.getString();
     
-    // Busca direta na string do JSON para evitar incompatibilidades de biblioteca
-    // Formato esperado: {"cadastrar":true,"id":5}
+    // 1. Caso de Cadastro
     if (payload.indexOf("\"cadastrar\":true") != -1) {
       int indexId = payload.indexOf("\"id\":");
       if (indexId != -1) {
@@ -465,8 +473,43 @@ void verificarSolicitacaoCadastro() {
             Serial.print("Solicitacao de cadastro recebida do backend para o ID: ");
             Serial.println(idParaCadastrar);
             
+            // Envia Confirmação (ACK) para o backend
+            enviarAckCadastro();
+            
             // Inicia o cadastro guiado no sensor
             cadastrarDigitalComID(idParaCadastrar);
+          }
+        }
+      }
+    }
+    // 2. Caso de Exclusão
+    else if (payload.indexOf("\"deletar\":true") != -1) {
+      int indexId = payload.indexOf("\"id\":");
+      if (indexId != -1) {
+        int inicioNum = indexId + 5;
+        int fimNum = payload.indexOf("}", inicioNum);
+        if (fimNum == -1) fimNum = payload.indexOf(",", inicioNum);
+        if (fimNum != -1) {
+          String idStr = payload.substring(inicioNum, fimNum);
+          idStr.trim();
+          int idParaDeletar = idStr.toInt();
+          if (idParaDeletar > 0) {
+            Serial.print("Solicitacao de exclusao recebida do backend para o ID: ");
+            Serial.println(idParaDeletar);
+            
+            telaMensagem("Apagando", "ID Sensor: " + String(idParaDeletar), TFT_YELLOW);
+            
+            if (finger.deleteModel(idParaDeletar) == FINGERPRINT_OK) {
+              telaMensagem("Sucesso", "Digital apagada", TFT_GREEN);
+              Serial.println("Digital apagada no sensor com sucesso.");
+              beep(700, 150);
+            } else {
+              telaMensagem("Erro", "Erro ao apagar", TFT_RED);
+              Serial.println("Erro ou digital inexistente ao apagar no sensor.");
+              somErro();
+            }
+            delay(2000);
+            telaAguardando();
           }
         }
       }
