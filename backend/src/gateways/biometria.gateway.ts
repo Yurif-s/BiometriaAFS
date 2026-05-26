@@ -5,7 +5,20 @@ import {
 } from '@nestjs/websockets';
 import { Server } from 'socket.io';
 
-@WebSocketGateway({ cors: { origin: '*' } })
+const allowedOrigins = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(',').map((url) => url.trim())
+  : ['http://localhost:5173'];
+
+if (!allowedOrigins.includes('https://biometria-afs.vercel.app')) {
+  allowedOrigins.push('https://biometria-afs.vercel.app');
+}
+
+@WebSocketGateway({
+  cors: {
+    origin: allowedOrigins,
+    credentials: true,
+  },
+})
 export class BiometriaGateway {
   @WebSocketServer()
   server: Server;
