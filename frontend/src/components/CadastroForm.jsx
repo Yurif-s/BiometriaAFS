@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { FaSave, FaUndo, FaFingerprint, FaArrowAltCircleRight, FaTrash } from "react-icons/fa";
 import StatusBanner from "./StatusBanner";
 import { useWebSocket } from "../hooks/useWebSocket";
@@ -31,13 +31,18 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
     }
   }, []);
 
+  const stepRef = useRef(step);
+  useEffect(() => {
+    stepRef.current = step;
+  }, [step]);
+
   useEffect(() => {
     return () => {
-      if (reservedBioId && step === 2) {
+      if (reservedBioId && stepRef.current === 2) {
         cancelarCadastroDigital(reservedBioId);
       }
     };
-  }, [reservedBioId, step, cancelarCadastroDigital]);
+  }, [reservedBioId, cancelarCadastroDigital]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
