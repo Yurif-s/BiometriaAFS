@@ -10,6 +10,7 @@ import { TurmaRepository } from '../repositories/turma.repository';
 import { CreateAlunoDto } from '../dtos/create-aluno.dto';
 import { UpdateAlunoDto } from '../dtos/update-aluno.dto';
 import { BiometriaGateway } from '../gateways/biometria.gateway';
+import { AcessoRepository } from '../repositories/acesso.repository';
 
 @Injectable()
 export class AlunoService {
@@ -24,6 +25,7 @@ export class AlunoService {
     private readonly alunoRepository: AlunoRepository,
     private readonly turmaRepository: TurmaRepository,
     private readonly biometriaGateway: BiometriaGateway,
+    private readonly acessoRepository: AcessoRepository,
   ) { }
 
   async iniciarCadastro(): Promise<{ id: number }> {
@@ -121,15 +123,27 @@ export class AlunoService {
     const aluno = await this.alunoRepository.findByBiometria(biometria);
 
     let updatedAluno = aluno;
+    let tipoAcesso = 'Entrada';
+    const agora = new Date();
+
     if (aluno) {
-      const agora = new Date();
       if (!aluno.entrada) {
         updatedAluno = await this.alunoRepository.update(aluno.id, { entrada: agora });
+        tipoAcesso = 'Entrada';
       } else if (!aluno.saida) {
         updatedAluno = await this.alunoRepository.update(aluno.id, { saida: agora });
+        tipoAcesso = 'Saída';
       } else {
         updatedAluno = await this.alunoRepository.update(aluno.id, { entrada: agora, saida: null });
+        tipoAcesso = 'Entrada';
       }
+      
+      // Criar o registro na tabela de histórico
+      await this.acessoRepository.create({
+        aluno_id: aluno.id,
+        tipo: tipoAcesso,
+        horario: agora,
+      });
     }
 
     const turma = updatedAluno && updatedAluno.turma_id ? await this.turmaRepository.findById(updatedAluno.turma_id) : null;
