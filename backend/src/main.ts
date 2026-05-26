@@ -7,8 +7,17 @@ import 'dotenv/config';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  const allowedOrigins = process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL.split(',').map((url) => url.trim())
+    : ['http://localhost:5173'];
+
+  // Sempre incluir a URL do Vercel em produção
+  if (!allowedOrigins.includes('https://biometria-afs.vercel.app')) {
+    allowedOrigins.push('https://biometria-afs.vercel.app');
+  }
+
   app.enableCors({
-    origin: process.env.FRONTEND_URL ?? 'http://localhost:5173',
+    origin: allowedOrigins,
     credentials: true,
   });
 
