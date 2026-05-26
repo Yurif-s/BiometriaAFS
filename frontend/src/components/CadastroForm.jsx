@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { FaSave, FaUndo, FaFingerprint, FaArrowAltCircleRight, FaTrash } from "react-icons/fa";
 import StatusBanner from "./StatusBanner";
 import { useWebSocket } from "../hooks/useWebSocket";
@@ -14,6 +14,46 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
   const [savingAnim, setSavingAnim] = useState(false);
   const [clearingAnim, setClearingAnim] = useState(false);
   const [aguardandoBio, setAguardandoBio] = useState(false);
+  const [reservedBioId, setReservedBioId] = useState(null);
+
+  const cancelarCadastroDigital = useCallback(async (id) => {
+    if (!id) return;
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+      await fetch(`${baseUrl}/alunos/biometria/cancelar-cadastro`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: Number(id) }),
+      });
+      console.log(`Cadastro cancelado para o ID biométrico: ${id}`);
+    } catch (error) {
+      console.error("Erro ao cancelar cadastro digital:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (reservedBioId && step === 2) {
+        cancelarCadastroDigital(reservedBioId);
+      }
+    };
+  }, [reservedBioId, step, cancelarCadastroDigital]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (reservedBioId && step === 2) {
+        const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+        const url = `${baseUrl}/alunos/biometria/cancelar-cadastro`;
+        const headers = { type: 'application/json' };
+        const blob = new Blob([JSON.stringify({ id: Number(reservedBioId) })], headers);
+        navigator.sendBeacon(url, blob);
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [reservedBioId, step]);
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -46,10 +86,16 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
       setAguardandoBio(false);
       return;
     }
+    // Se o ID recebido for diferente do reservado originalmente (reuso de digital órfã),
+    // cancela a reserva original para liberá-la no sensor
+    if (reservedBioId && reservedBioId !== biometriaId) {
+      cancelarCadastroDigital(reservedBioId);
+    }
+    setReservedBioId(biometriaId);
     setFormData(prev => ({ ...prev, biometria: biometriaId }));
     setAguardandoBio(false);
     setStep(3);
-  }, [aguardandoBio, showToast]);
+  }, [aguardandoBio, showToast, reservedBioId, cancelarCadastroDigital]);
 
   useWebSocket(handleBiometriaRecebida);
 
@@ -64,6 +110,7 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
         throw new Error("Erro ao iniciar cadastro de biometria");
       }
       const data = await response.json();
+      setReservedBioId(data.id);
       if (showToast) {
         showToast(`Sensor ativado! Grave a digital no ID: ${data.id}`, "info");
       }
@@ -80,6 +127,7 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
     try {
       const success = await onSave(formData);
       if (success) {
+        setReservedBioId(null);
         setFormData(emptyForm);
         setStep(1);
       }
@@ -186,7 +234,14 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
             >
               {aguardandoBio ? "Aguardando Digital..." : "Coletar Digital"}
             </button>
-            <button type="button" className="limpar" onClick={() => setStep(1)}>
+            <button type="button" className="limpar" onClick={() => {
+              if (reservedBioId) {
+                cancelarCadastroDigital(reservedBioId);
+                setReservedBioId(null);
+              }
+              setAguardandoBio(false);
+              setStep(1);
+            }}>
               Voltar
             </button>
           </div>
