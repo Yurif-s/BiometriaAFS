@@ -63,6 +63,7 @@ export class AlunoController {
   async cancelarCadastro(
     @Body() body: { id: number },
   ): Promise<void> {
+    console.log(`[AlunoController] Recebeu cancelar-cadastro para o ID: ${body.id}`);
     return this.alunoService.cancelarCadastro(body.id);
   }
 

@@ -55,6 +55,8 @@ export class AlunoService {
   }
 
   queueDeletion(id: number) {
+    console.log(`[AlunoService] queueDeletion chamado para o ID: ${id}`);
+    console.trace('[AlunoService] Rastreio de quem chamou queueDeletion:');
     if (!this.pendingDeletions.includes(id)) {
       this.pendingDeletions.push(id);
     }
@@ -62,7 +64,7 @@ export class AlunoService {
 
   async cleanExpiredReservations() {
     const now = Date.now();
-    const TIMEOUT = 120000; // 2 minutos
+    const TIMEOUT = 600000; // 10 minutos
     const expiredIds: number[] = [];
     for (const [id, timestamp] of this.reservedIds.entries()) {
       if (now - timestamp > TIMEOUT) {
