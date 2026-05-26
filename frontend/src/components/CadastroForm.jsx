@@ -16,16 +16,16 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
   const [aguardandoBio, setAguardandoBio] = useState(false);
   const [reservedBioId, setReservedBioId] = useState(null);
 
-  const cancelarCadastroDigital = useCallback(async (id) => {
+  const cancelarCadastroDigital = useCallback(async (id, reason = "unknown") => {
     if (!id) return;
     try {
       const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
       await fetch(`${baseUrl}/alunos/biometria/cancelar-cadastro`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: Number(id) }),
+        body: JSON.stringify({ id: Number(id), reason }),
       });
-      console.log(`Cadastro cancelado para o ID biométrico: ${id}`);
+      console.log(`Cadastro cancelado para o ID biométrico: ${id} | Motivo: ${reason}`);
     } catch (error) {
       console.error("Erro ao cancelar cadastro digital:", error);
     }
@@ -45,7 +45,7 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
   useEffect(() => {
     return () => {
       if (reservedBioIdRef.current && stepRef.current === 2) {
-        cancelarCadastroDigital(reservedBioIdRef.current);
+        cancelarCadastroDigital(reservedBioIdRef.current, "effect_cleanup");
       }
     };
   }, [cancelarCadastroDigital]);
@@ -101,7 +101,7 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
     // cancela a reserva original para liberá-la no sensor
     if (reservedBioId && Number(reservedBioId) !== Number(biometriaId)) {
       console.log(`[CadastroForm] ID diferente recebido. Cancelando reserva original ${reservedBioId}`);
-      cancelarCadastroDigital(reservedBioId);
+      cancelarCadastroDigital(reservedBioId, "id_mismatch");
     }
     setReservedBioId(biometriaId);
     setFormData(prev => ({ ...prev, biometria: biometriaId }));
@@ -248,7 +248,7 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
             </button>
             <button type="button" className="limpar" onClick={() => {
               if (reservedBioId) {
-                cancelarCadastroDigital(reservedBioId);
+                cancelarCadastroDigital(reservedBioId, "user_cancelled_voltar");
                 setReservedBioId(null);
               }
               setAguardandoBio(false);
