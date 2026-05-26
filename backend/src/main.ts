@@ -12,8 +12,13 @@ async function bootstrap() {
     : ['http://localhost:5173'];
 
   // Sempre incluir a URL do Vercel em produção
-  if (!allowedOrigins.includes('https://biometria-afs.vercel.app')) {
-    allowedOrigins.push('https://biometria-afs.vercel.app');
+  const vercelUrlWithHyphen = 'https://biometria-afs.vercel.app';
+  const vercelUrlNoHyphen = 'https://biometriaafs.vercel.app';
+  if (!allowedOrigins.includes(vercelUrlWithHyphen)) {
+    allowedOrigins.push(vercelUrlWithHyphen);
+  }
+  if (!allowedOrigins.includes(vercelUrlNoHyphen)) {
+    allowedOrigins.push(vercelUrlNoHyphen);
   }
 
   app.enableCors({
