@@ -99,6 +99,15 @@ Controllers → Services → Repositories → Prisma → PostgreSQL
 | saida     | DateTime | ❌          | Registro de saída (opcional)      |
 | turma_id  | Int      | ✅          | FK para Turma                     |
 
+**Acesso**
+
+| Campo     | Tipo     | Obrigatório | Descrição                         |
+|-----------|----------|:-----------:|-----------------------------------|
+| id        | Int      | —           | Identificador único               |
+| tipo      | String   | ✅          | "Entrada" ou "Saída"              |
+| horario   | DateTime | ✅          | Horário do registro               |
+| aluno_id  | Int      | ✅          | FK para Aluno                     |
+
 **Tecnologias:**
 
 | Tecnologia | Versão | Uso                       |
@@ -107,6 +116,7 @@ Controllers → Services → Repositories → Prisma → PostgreSQL
 | TypeScript | ^5.7   | Linguagem                 |
 | Prisma ORM | ^7.4   | Acesso ao banco de dados  |
 | PostgreSQL | —      | Banco de dados relacional |
+| Socket.IO  | ^4.8   | WebSockets (Tempo Real)   |
 | Jest       | ^30.0  | Testes unitários          |
 | pnpm       | —      | Gerenciador de pacotes    |
 
@@ -122,6 +132,9 @@ Interface web desenvolvida em **React + Vite** para gestão de alunos e turmas.
 - Tabela de alunos com busca e filtros
 - Edição inline via modal
 - Confirmação de exclusão com feedback visual
+- Histórico de acessos com gerenciamento completo (CRUD)
+- Terminal interativo com comunicação em tempo real via WebSockets
+- Reset diário automático da tela do terminal à meia-noite
 - Persistência local via `localStorage`
 - Notificações com `react-hot-toast`
 
@@ -131,6 +144,7 @@ Interface web desenvolvida em **React + Vite** para gestão de alunos e turmas.
 |-----------------|--------|---------------------------|
 | React           | ^19.0  | Framework de UI           |
 | Vite            | ^6.0   | Bundler e dev server      |
+| Socket.IO Client| ^4.8   | Comunicação em tempo real |
 | react-hot-toast | ^2.5   | Notificações              |
 | react-icons     | ^5.5   | Ícones                    |
 
@@ -323,7 +337,18 @@ Interface disponível em `http://localhost:5173`
 }
 ```
 
-> Os campos `entrada` e `saida` são **opcionais**. Quando omitidos, são salvos como `null` e podem ser preenchidos via `PUT /alunos/:id`. Os campos `matricula` e `biometria` são únicos — duplicatas retornam `409 Conflict`.
+### Acessos — `/acessos`
+
+| Método | Rota               | Descrição                              |
+|--------|--------------------|----------------------------------------|
+| POST   | `/acessos`         | Registra um novo acesso manualmente    |
+| GET    | `/acessos`         | Lista todo o histórico de acessos      |
+| GET    | `/acessos/hoje`    | Lista os acessos registrados no dia    |
+| GET    | `/acessos/:id`     | Busca um acesso específico por ID      |
+| PUT    | `/acessos/:id`     | Atualiza dados de um acesso (ex: tipo) |
+| DELETE | `/acessos/:id`     | Remove um registro de acesso           |
+
+> Os campos `entrada` e `saida` na entidade Aluno são **opcionais** (sendo preenchidos automaticamente na identificação, além do histórico armazenado em `Acesso`). Quando omitidos na criação, são salvos como `null`. Os campos `matricula` e `biometria` são únicos — duplicatas retornam `409 Conflict`.
 
 ---
 
