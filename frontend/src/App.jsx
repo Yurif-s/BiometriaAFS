@@ -1,7 +1,7 @@
-// App.jsx — Versão 1: Toast customizado (sem biblioteca externa)
+// App.jsx — Versão 2: Terminal de Frequência + Painel Admin
 import "./App.css";
 import { useState } from "react";
-import { FaUsers } from "react-icons/fa";
+import { FaUsers, FaArrowLeft } from "react-icons/fa";
 
 import Header from "./components/Header";
 import Footer from "./components/Footer";
@@ -12,6 +12,7 @@ import EditModal from "./components/EditModal";
 import DeleteConfirmModal from "./components/DeleteConfirmModal";
 import TurmasManager from "./components/TurmasManager";
 import Toast from "./components/Toast";
+import TerminalAcesso from "./components/TerminalAcesso";
 
 import { useAlunos } from "./hooks/useAlunos";
 import { useTurmas } from "./hooks/useTurmas";
@@ -19,6 +20,9 @@ import { useStatus } from "./hooks/useStatus";
 import { useToast } from "./hooks/useToast";
 
 function App() {
+  // 'frequencia' = tela do terminal de acesso | 'admin' = painel administrativo
+  const [viewMode, setViewMode] = useState("frequencia");
+
   const { turmas, turmaOptions, addTurma, deleteTurma, updateTurma, turmaExists } = useTurmas();
   const { alunos, addAluno, updateAluno, deleteAluno, matriculaExists } = useAlunos(turmaOptions);
   const { statusMessage, showStatus, showMsg } = useStatus();
@@ -108,74 +112,94 @@ function App() {
     <div className="app">
       <Header />
 
-      <main className="container">
-        <section className="top-section">
-          <div className="aluno-title">
-            <div className="circle-icon">
-              <FaUsers />
-            </div>
-            <div>
-              <h2>Alunos</h2>
-              <p>Cadastre, edite, visualize e remova alunos</p>
-            </div>
-          </div>
-          <div
-            className="novo-btn"
-            style={{ cursor: "pointer" }}
-            onClick={() =>
-              document.getElementById("lista-alunos").scrollIntoView({ behavior: "smooth" })
-            }
+      {/* ═══════════ TERMINAL DE FREQUÊNCIA ═══════════ */}
+      {viewMode === "frequencia" && (
+        <TerminalAcesso
+          onGoToCadastro={() => setViewMode("admin")}
+          onGoToAdmin={() => setViewMode("admin")}
+          showToast={showToast}
+        />
+      )}
+
+      {/* ═══════════ PAINEL ADMINISTRATIVO ═══════════ */}
+      {viewMode === "admin" && (
+        <main className="container">
+          {/* Botão voltar ao terminal */}
+          <button
+            className="back-to-terminal-btn"
+            onClick={() => setViewMode("frequencia")}
           >
-            Alunos cadastrados: {alunos.length}
-          </div>
-        </section>
+            <FaArrowLeft /> Voltar ao Terminal
+          </button>
 
-        {showStatus && <StatusBanner message={statusMessage} />}
+          <section className="top-section">
+            <div className="aluno-title">
+              <div className="circle-icon">
+                <FaUsers />
+              </div>
+              <div>
+                <h2>Alunos</h2>
+                <p>Cadastre, edite, visualize e remova alunos</p>
+              </div>
+            </div>
+            <div
+              className="novo-btn"
+              style={{ cursor: "pointer" }}
+              onClick={() =>
+                document.getElementById("lista-alunos")?.scrollIntoView({ behavior: "smooth" })
+              }
+            >
+              Alunos cadastrados: {alunos.length}
+            </div>
+          </section>
 
-        {editingForm && (
-          <EditModal
-            editingForm={editingForm}
+          {showStatus && <StatusBanner message={statusMessage} />}
+
+          {editingForm && (
+            <EditModal
+              editingForm={editingForm}
+              turmaOptions={turmaOptions}
+              onChange={handleEditChange}
+              onUpdate={handleUpdate}
+              onCancel={() => setEditingForm(null)}
+            />
+          )}
+
+          {showDeleteConfirm && (
+            <DeleteConfirmModal
+              target={deleteTarget}
+              loading={deleteLoading}
+              onConfirm={handleDeleteConfirm}
+              onCancel={handleDeleteCancel}
+              type="aluno"
+            />
+          )}
+
+          {/* TurmasManager recebe showToast para disparar após excluir turma */}
+          <TurmasManager
+            turmas={turmas}
+            onAdd={addTurma}
+            onUpdate={updateTurma}
+            onDelete={deleteTurma}
+            turmaExists={turmaExists}
+            showToast={showToast}
+          />
+
+          <CadastroForm
             turmaOptions={turmaOptions}
-            onChange={handleEditChange}
-            onUpdate={handleUpdate}
-            onCancel={() => setEditingForm(null)}
+            onSave={handleCadastroSave}
+            showStatus={showStatus}
+            statusMessage={statusMessage}
+            showToast={showToast}
           />
-        )}
 
-        {showDeleteConfirm && (
-          <DeleteConfirmModal
-            target={deleteTarget}
-            loading={deleteLoading}
-            onConfirm={handleDeleteConfirm}
-            onCancel={handleDeleteCancel}
-            type="aluno"
+          <AlunosTable
+            alunos={alunos}
+            onEdit={handleEditClick}
+            onDelete={handleDeleteClick}
           />
-        )}
-
-        {/* TurmasManager recebe showToast para disparar após excluir turma */}
-        <TurmasManager
-          turmas={turmas}
-          onAdd={addTurma}
-          onUpdate={updateTurma}
-          onDelete={deleteTurma}
-          turmaExists={turmaExists}
-          showToast={showToast}
-        />
-
-        <CadastroForm
-          turmaOptions={turmaOptions}
-          onSave={handleCadastroSave}
-          showStatus={showStatus}
-          statusMessage={statusMessage}
-          showToast={showToast}
-        />
-
-        <AlunosTable
-          alunos={alunos}
-          onEdit={handleEditClick}
-          onDelete={handleDeleteClick}
-        />
-      </main>
+        </main>
+      )}
 
       <Footer />
 

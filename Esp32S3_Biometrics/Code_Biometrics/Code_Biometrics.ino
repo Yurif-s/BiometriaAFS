@@ -82,6 +82,20 @@ void notificarBackend(int biometriaId) {
   http.end();
 }
 
+void notificarBackendFalha() {
+  if (WiFi.status() != WL_CONNECTED) return;
+
+  HTTPClient http;
+  http.begin(String(API_URL) + "/alunos/biometria/falha");
+  http.addHeader("Content-Type", "application/json");
+
+  int httpCode = http.POST("{}");
+  if (httpCode == 200 || httpCode == 201) {
+    Serial.println("Notificacao de falha de leitura enviada ao backend.");
+  }
+  http.end();
+}
+
 // ────────────────────────────────────────────────────────
 // DATA E HORA
 // ────────────────────────────────────────────────────────
@@ -750,15 +764,14 @@ void loop() {
         telaAguardando();
 
       } else if (p == FINGERPRINT_NOTFOUND) {
-
         telaAcessoNegado();
-
         Serial.println("ACESSO NEGADO");
 
+        // Notifica o backend sobre falha de leitura
+        notificarBackendFalha();
+
         somErro();
-
         delay(2000);
-
         telaAguardando();
       }
     }

@@ -747,3 +747,509 @@ tbody tr:hover{
   }
 
 }
+
+/* ═══════════════════════════════════════════ */
+/*  TERMINAL DE ACESSO — FREQUÊNCIA           */
+/* ═══════════════════════════════════════════ */
+
+/* Botão "Voltar ao Terminal" */
+.back-to-terminal-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+
+  background:none;
+  border:2px solid #009245;
+  color:#009245;
+
+  padding:12px 22px;
+  border-radius:12px;
+
+  font-size:15px;
+  font-weight:600;
+  font-family:inherit;
+
+  cursor:pointer;
+  margin-bottom:28px;
+  transition:.25s;
+}
+
+.back-to-terminal-btn:hover{
+  background:#009245;
+  color:white;
+  transform:translateY(-1px);
+  box-shadow:0 6px 16px rgba(0,146,69,0.25);
+}
+
+/* Container principal */
+.terminal-container{
+  width:91%;
+  margin:42px auto;
+  min-height:calc(100vh - 95px - 72px - 84px);
+}
+
+/* Header do terminal */
+.terminal-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:32px;
+}
+
+.terminal-logo h2{
+  color:#009245;
+  font-size:32px;
+  font-weight:700;
+  line-height:1.1;
+}
+
+.terminal-logo p{
+  color:#888;
+  font-size:14px;
+  margin-top:4px;
+}
+
+.terminal-controls{
+  display:flex;
+  gap:12px;
+}
+
+.admin-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+
+  background:#009245;
+  color:white;
+
+  border:none;
+  padding:14px 24px;
+  border-radius:14px;
+
+  font-size:15px;
+  font-weight:600;
+  font-family:inherit;
+
+  cursor:pointer;
+  transition:.25s;
+  box-shadow:0 8px 20px rgba(0,146,69,0.2);
+}
+
+.admin-btn:hover{
+  background:#007a3a;
+  transform:translateY(-2px);
+  box-shadow:0 12px 28px rgba(0,146,69,0.3);
+}
+
+/* Grid: Sensor + Últimos acessos */
+.terminal-grid{
+  display:grid;
+  grid-template-columns:1.4fr 1fr;
+  gap:28px;
+  align-items:start;
+}
+
+.terminal-card{
+  background:white;
+  border-radius:22px;
+  padding:32px;
+  border:1px solid #ececec;
+  box-shadow:0 2px 12px rgba(0,0,0,0.04);
+}
+
+/* === MAIN CARD (Relógio + Sensor) === */
+.main-card{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:36px;
+  padding:48px 32px;
+}
+
+/* Relógio */
+.clock-section{
+  text-align:center;
+}
+
+.clock-time{
+  font-size:56px;
+  font-weight:700;
+  color:#222;
+  letter-spacing:2px;
+  line-height:1;
+}
+
+.clock-date{
+  font-size:15px;
+  color:#888;
+  margin-top:8px;
+  text-transform:capitalize;
+}
+
+/* Sensor */
+.sensor-section{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:14px;
+  text-align:center;
+}
+
+.sensor-section h3{
+  font-size:22px;
+  color:#333;
+  margin:0;
+}
+
+.sensor-section p{
+  font-size:14px;
+  color:#777;
+  max-width:340px;
+  line-height:1.5;
+}
+
+/* Container do ícone de digital */
+.fingerprint-container{
+  width:130px;
+  height:130px;
+  border-radius:50%;
+
+  display:flex;
+  justify-content:center;
+  align-items:center;
+
+  transition:.35s ease;
+}
+
+.fg-icon{
+  font-size:60px;
+  transition:color .3s;
+}
+
+/* Estado IDLE — pulsar suavemente */
+.fingerprint-container.pulsing{
+  background:linear-gradient(135deg, rgba(0,146,69,0.08), rgba(0,146,69,0.02));
+  border:2px solid rgba(0,146,69,0.2);
+  animation:terminalPulse 2.2s ease-in-out infinite;
+}
+
+.fg-icon.idle{
+  color:#009245;
+}
+
+@keyframes terminalPulse{
+  0%,100%{ transform:scale(1); box-shadow:0 0 0 0 rgba(0,146,69,0.15); }
+  50%{ transform:scale(1.06); box-shadow:0 0 0 18px rgba(0,146,69,0); }
+}
+
+/* Estado SUCCESS */
+.fingerprint-container.success-glow{
+  background:linear-gradient(135deg, rgba(0,200,95,0.12), rgba(0,146,69,0.04));
+  border:2px solid #00c85f;
+  box-shadow:0 0 28px rgba(0,200,95,0.3);
+  animation:successPop .5s ease;
+}
+
+.fg-icon.success{
+  color:#00c85f;
+}
+
+.success-text{
+  color:#00c85f !important;
+}
+
+@keyframes successPop{
+  0%{ transform:scale(0.8); opacity:0; }
+  60%{ transform:scale(1.1); }
+  100%{ transform:scale(1); opacity:1; }
+}
+
+/* Estado ERROR */
+.fingerprint-container.error-glow{
+  background:linear-gradient(135deg, rgba(255,75,75,0.08), rgba(255,75,75,0.02));
+  border:2px solid #ff4b4b;
+  box-shadow:0 0 20px rgba(255,75,75,0.2);
+  animation:errorShake .5s ease;
+}
+
+.fg-icon.error{
+  color:#ff4b4b;
+}
+
+.error-text{
+  color:#ff4b4b !important;
+}
+
+@keyframes errorShake{
+  0%,100%{ transform:translateX(0); }
+  20%{ transform:translateX(-8px); }
+  40%{ transform:translateX(8px); }
+  60%{ transform:translateX(-5px); }
+  80%{ transform:translateX(5px); }
+}
+
+/* Estado PROMPT-CADASTRO */
+.fingerprint-container.prompt-glow{
+  background:linear-gradient(135deg, rgba(255,152,0,0.1), rgba(255,152,0,0.02));
+  border:2px solid #ff9800;
+  box-shadow:0 0 24px rgba(255,152,0,0.2);
+}
+
+.fg-icon.prompt{
+  color:#ff9800;
+}
+
+.prompt-text{
+  color:#ff9800 !important;
+  font-size:22px;
+}
+
+.prompt-desc{
+  color:#666 !important;
+}
+
+.prompt-actions{
+  display:flex;
+  gap:14px;
+  margin-top:8px;
+}
+
+.cadastrar-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+
+  background:#ff9800;
+  color:white;
+  border:none;
+
+  padding:14px 24px;
+  border-radius:12px;
+
+  font-size:15px;
+  font-weight:600;
+  font-family:inherit;
+
+  cursor:pointer;
+  transition:.25s;
+  box-shadow:0 8px 18px rgba(255,152,0,0.25);
+}
+
+.cadastrar-btn:hover{
+  background:#e68a00;
+  transform:translateY(-2px);
+  box-shadow:0 12px 24px rgba(255,152,0,0.35);
+}
+
+/* Badge de aviso (tentativas) */
+.warning-badge{
+  display:inline-block;
+  background:rgba(255,75,75,0.08);
+  color:#ff4b4b;
+  padding:6px 16px;
+  border-radius:8px;
+  font-size:13px;
+  font-weight:600;
+  margin-top:4px;
+}
+
+/* Card de detalhes do aluno reconhecido */
+.aluno-details-card{
+  background:#f7fff5;
+  border:1px solid #d9f6df;
+  border-radius:16px;
+  padding:20px 28px;
+  text-align:center;
+  margin-top:4px;
+}
+
+.aluno-details-card h4{
+  color:#222;
+  font-size:22px;
+  margin-bottom:8px;
+}
+
+.aluno-details-card p{
+  color:#555;
+  font-size:14px;
+  margin:4px 0;
+}
+
+.status-badge{
+  display:inline-block;
+  background:#e4f7e8;
+  color:#0f5f2d;
+  padding:8px 18px;
+  border-radius:999px;
+  font-size:13px;
+  font-weight:700;
+  margin-top:10px;
+}
+
+/* === HISTORY CARD (Últimos Acessos) === */
+.history-card{
+  padding:28px;
+}
+
+.history-header{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-bottom:22px;
+  color:#009245;
+}
+
+.history-header svg{
+  font-size:20px;
+}
+
+.history-header h3{
+  font-size:20px;
+  font-weight:600;
+  color:#222;
+  margin:0;
+}
+
+.history-list{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.empty-history{
+  text-align:center;
+  padding:40px 20px;
+  color:#aaa;
+  font-size:14px;
+}
+
+.history-item{
+  display:flex;
+  align-items:center;
+  gap:14px;
+
+  padding:14px 16px;
+  border-radius:14px;
+  border:1px solid #ececec;
+
+  background:white;
+  transition:.2s;
+}
+
+.history-item:hover{
+  background:#f7fff5;
+  border-color:#d9f6df;
+}
+
+.history-avatar{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+
+  background:#009245;
+  color:white;
+
+  display:flex;
+  justify-content:center;
+  align-items:center;
+
+  font-size:18px;
+  font-weight:700;
+  flex-shrink:0;
+}
+
+.history-item.saída .history-avatar{
+  background:#ff9800;
+}
+
+.history-info{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  flex:1;
+  min-width:0;
+}
+
+.history-name{
+  font-weight:600;
+  color:#222;
+  font-size:14px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.history-turma{
+  font-size:12px;
+  color:#888;
+}
+
+.history-time-badge{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:2px;
+  flex-shrink:0;
+}
+
+.history-time-badge .time{
+  font-size:13px;
+  font-weight:600;
+  color:#333;
+}
+
+.history-time-badge .type{
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  color:#009245;
+  letter-spacing:0.5px;
+}
+
+.history-item.saída .history-time-badge .type{
+  color:#ff9800;
+}
+
+/* ═══════════ RESPONSIVO — TERMINAL ═══════════ */
+
+@media(max-width:1000px){
+  .terminal-grid{
+    grid-template-columns:1fr;
+  }
+
+  .terminal-header{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:16px;
+  }
+}
+
+@media(max-width:650px){
+  .terminal-container{
+    width:95%;
+  }
+
+  .clock-time{
+    font-size:40px;
+  }
+
+  .fingerprint-container{
+    width:100px;
+    height:100px;
+  }
+
+  .fg-icon{
+    font-size:44px;
+  }
+
+  .prompt-actions{
+    flex-direction:column;
+    width:100%;
+  }
+
+  .cadastrar-btn,
+  .prompt-actions .limpar{
+    width:100%;
+    justify-content:center;
+  }
+}
