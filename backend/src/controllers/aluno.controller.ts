@@ -66,6 +66,14 @@ export class AlunoController {
     return this.alunoService.cancelarCadastro(body.id);
   }
 
+  // POST /alunos/biometria/falha
+  // Chamado pelo ESP32 se a digital lida for inválida/acesso negado
+  @Post('biometria/falha')
+  @HttpCode(HttpStatus.OK)
+  async registrarFalha(): Promise<void> {
+    return this.alunoService.registrarFalha();
+  }
+
   @Get()
   async findAll(): Promise<Aluno[]> {
     return this.alunoService.findAll();

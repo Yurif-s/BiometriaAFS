@@ -120,13 +120,35 @@ export class AlunoService {
   async registrarLeitura(biometria: number) {
     const aluno = await this.alunoRepository.findByBiometria(biometria);
 
+    let updatedAluno = aluno;
+    if (aluno) {
+      const agora = new Date();
+      if (!aluno.entrada) {
+        updatedAluno = await this.alunoRepository.update(aluno.id, { entrada: agora });
+      } else if (!aluno.saida) {
+        updatedAluno = await this.alunoRepository.update(aluno.id, { saida: agora });
+      } else {
+        updatedAluno = await this.alunoRepository.update(aluno.id, { entrada: agora, saida: null });
+      }
+    }
+
+    const turma = updatedAluno && updatedAluno.turma_id ? await this.turmaRepository.findById(updatedAluno.turma_id) : null;
+
     // Notifica o frontend via WebSocket independente de ter encontrado ou não
     this.biometriaGateway.emitirBiometriaLida(
       biometria,
-      aluno?.nome,
+      updatedAluno?.nome,
+      updatedAluno?.matricula,
+      turma?.nome,
+      updatedAluno?.entrada,
+      updatedAluno?.saida
     );
 
-    return { encontrado: !!aluno, aluno: aluno ?? undefined };
+    return { encontrado: !!aluno, aluno: updatedAluno ?? undefined };
+  }
+
+  async registrarFalha() {
+    this.biometriaGateway.emitirBiometriaFalha();
   }
 
   async create(createAlunoDto: CreateAlunoDto): Promise<Aluno> {
