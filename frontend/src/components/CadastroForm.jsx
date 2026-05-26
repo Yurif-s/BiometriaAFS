@@ -32,17 +32,23 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
   }, []);
 
   const stepRef = useRef(step);
+  const reservedBioIdRef = useRef(reservedBioId);
+  
   useEffect(() => {
     stepRef.current = step;
   }, [step]);
 
   useEffect(() => {
+    reservedBioIdRef.current = reservedBioId;
+  }, [reservedBioId]);
+
+  useEffect(() => {
     return () => {
-      if (reservedBioId && stepRef.current === 2) {
-        cancelarCadastroDigital(reservedBioId);
+      if (reservedBioIdRef.current && stepRef.current === 2) {
+        cancelarCadastroDigital(reservedBioIdRef.current);
       }
     };
-  }, [reservedBioId, cancelarCadastroDigital]);
+  }, [cancelarCadastroDigital]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -93,7 +99,8 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
     }
     // Se o ID recebido for diferente do reservado originalmente (reuso de digital órfã),
     // cancela a reserva original para liberá-la no sensor
-    if (reservedBioId && reservedBioId !== biometriaId) {
+    if (reservedBioId && Number(reservedBioId) !== Number(biometriaId)) {
+      console.log(`[CadastroForm] ID diferente recebido. Cancelando reserva original ${reservedBioId}`);
       cancelarCadastroDigital(reservedBioId);
     }
     setReservedBioId(biometriaId);
