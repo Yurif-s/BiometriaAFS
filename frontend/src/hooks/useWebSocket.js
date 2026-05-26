@@ -18,8 +18,7 @@ export function useWebSocket(onBiometriaLida, onBiometriaFalha) {
 
   useEffect(() => {
     socket = io(import.meta.env.VITE_API_URL ?? 'http://localhost:3000', {
-      transports: ['polling'],
-      upgrade: false,
+      transports: ['websocket'],
     });
 
     socket.on('biometria-lida', (data) => {
