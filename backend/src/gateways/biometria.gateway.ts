@@ -9,8 +9,8 @@ const allowedOrigins = process.env.FRONTEND_URL
   ? process.env.FRONTEND_URL.split(',').map((url) => url.trim())
   : ['http://localhost:5173'];
 
-if (!allowedOrigins.includes('https://biometria-afs.vercel.app')) {
-  allowedOrigins.push('https://biometria-afs.vercel.app');
+if (!allowedOrigins.includes('https://biometriaafs.vercel.app')) {
+  allowedOrigins.push('https://biometriaafs.vercel.app');
 }
 
 @WebSocketGateway({
