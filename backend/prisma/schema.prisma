@@ -26,4 +26,15 @@ model Aluno {
 
   turma_id  Int
   turma     Turma  @relation(fields: [turma_id], references: [id])
+
+  acessos   Acesso[]
+}
+
+model Acesso {
+  id        Int      @id @default(autoincrement())
+  tipo      String   // "Entrada" ou "Saída"
+  horario   DateTime @default(now())
+  
+  aluno_id  Int
+  aluno     Aluno    @relation(fields: [aluno_id], references: [id], onDelete: Cascade)
 }

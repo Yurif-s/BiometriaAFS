@@ -9,10 +9,23 @@ import { AlunoController } from '../controllers/aluno.controller';
 import { AlunoService } from 'services/aluno.service';
 import { AlunoRepository } from 'repositories/aluno.repository';
 import { BiometriaGateway } from '../gateways/biometria.gateway';
+import { AcessoController } from '../controllers/acesso.controller';
+import { AcessoService } from '../services/acesso.service';
+import { AcessoRepository } from '../repositories/acesso.repository';
 
 @Module({
   imports: [],
-  controllers: [AppController, TurmaController, AlunoController],
-  providers: [AppService, PrismaService, TurmaService, TurmaRepository, AlunoService, AlunoRepository, BiometriaGateway],
+  controllers: [AppController, TurmaController, AlunoController, AcessoController],
+  providers: [
+    AppService, 
+    PrismaService, 
+    TurmaService, 
+    TurmaRepository, 
+    AlunoService, 
+    AlunoRepository, 
+    BiometriaGateway,
+    AcessoService,
+    AcessoRepository
+  ],
 })
 export class AppModule {}
