@@ -52,11 +52,13 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
 
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (reservedBioId && step === 2) {
+      if (reservedBioIdRef.current && stepRef.current === 2) {
         const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
         const url = `${baseUrl}/alunos/biometria/cancelar-cadastro`;
-        const headers = { type: 'application/json' };
-        const blob = new Blob([JSON.stringify({ id: Number(reservedBioId) })], headers);
+        const blob = new Blob(
+          [JSON.stringify({ id: Number(reservedBioIdRef.current), reason: 'beforeunload' })],
+          { type: 'application/json' }
+        );
         navigator.sendBeacon(url, blob);
       }
     };
@@ -64,7 +66,7 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [reservedBioId, step]);
+  }, []); // Sem dependências — usa refs para ler valores atuais sempre
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
