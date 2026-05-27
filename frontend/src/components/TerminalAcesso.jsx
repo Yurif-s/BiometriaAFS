@@ -122,8 +122,8 @@ export default function TerminalAcesso({ onGoToCadastro, onGoToAdmin, showToast 
                 <div className="fingerprint-container pulsing">
                   <FaFingerprint className="fg-icon idle" />
                 </div>
-                <h3>Posicione o Dedo</h3>
-                <p>Encoste o dedo no leitor para registrar a entrada ou saída</p>
+                <h3>Aguardando sua digital</h3>
+                <p>Posicione a sua digital no leitor para registrar a entrada ou saída</p>
                 {falhas > 0 && <span className="warning-badge">Tentativas falhas: {falhas}/3</span>}
               </>
             )}
