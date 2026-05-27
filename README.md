@@ -269,7 +269,7 @@ npx prisma generate
 1. Acesse `chrome://extensions/`
 2. Ative o **Modo desenvolvedor**
 3. Clique em **Carregar sem compactação**
-4. Selecione a pasta `extensao/`
+4. Selecione a pasta `extension/`
 
 ---
 
@@ -402,12 +402,12 @@ BiometriaAFS/
 │       ├── hooks/                     # useAlunos, useStatus
 │       └── constants/                 # Dados iniciais e opções de turma
 │
-├── extensao/
+├── extension/
 │   ├── content.js                     # Script injetado no portal Seduc
 │   ├── manifest.json                  # Manifest V3
 │   └── popup/                         # UI da extensão (HTML, CSS, JS)
 │
-└── Esp32S3_Biometrics/
+└── hardware/
     └── Code_Biometrics/
         └── Code_Biometrics.ino        # Firmware ESP32-S3 + AS608
 ```
