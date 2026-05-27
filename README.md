@@ -23,7 +23,6 @@
 - [✨ Funcionalidades em Destaque](#-funcionalidades-em-destaque)
 - [📐 Arquitetura Geral](#-arquitetura-geral)
 - [🧩 Módulos](#-módulos)
-- [📸 Capturas de Tela](#-capturas-de-tela)
 - [🛠️ Pré-requisitos](#-pré-requisitos)
 - [⚙️ Instalação e Configuração](#️-instalação-e-configuração)
 - [▶️ Executando o Projeto](#️-executando-o-projeto)
