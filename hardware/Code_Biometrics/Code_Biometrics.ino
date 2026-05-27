@@ -218,7 +218,7 @@ void telaMensagem(const char* titulo, const char* msg, uint16_t cor = TFT_WHITE)
 }
 
 void telaIniciando()   { telaMensagem("Biometria AFS", "Iniciando...",        TFT_CYAN); }
-void telaAguardando()  { telaMensagem("Biometria AFS", "Aguardando dedo...", TFT_CYAN); }
+void telaAguardando()  { telaMensagem("Biometria AFS", "Aguardando digital...", TFT_CYAN); }
 
 void telaAcessoLiberado(int id) {
   String dataHora = obterDataHora();
@@ -337,7 +337,7 @@ void cadastrarDigitalComID(int novoID) {
     return;
   }
 
-  telaMensagem("Cadastro", "Coloque o dedo", TFT_CYAN);
+  telaMensagem("Cadastro", "Aguardando digital", TFT_CYAN);
   Serial.printf("Novo ID: %d\n", novoID);
 
   // Aguarda dedo sem delay()
@@ -346,7 +346,7 @@ void cadastrarDigitalComID(int novoID) {
   }
 
   if (finger.image2Tz(1) != FINGERPRINT_OK) {
-    telaMensagem("Erro", "Falha leitura", TFT_RED);
+    telaMensagem("Erro", "Falha na leitura", TFT_RED);
     somErro();
     return;
   }
@@ -373,13 +373,13 @@ void cadastrarDigitalComID(int novoID) {
     return;
   }
 
-  telaMensagem("Remova", "Retire o dedo", TFT_YELLOW);
+  telaMensagem("Remova", "Retire a digital", TFT_YELLOW);
   vTaskDelay(pdMS_TO_TICKS(1000));
   while (finger.getImage() != FINGERPRINT_NOFINGER) {
     vTaskDelay(pdMS_TO_TICKS(20));
   }
 
-  telaMensagem("Verificacao", "Mesmo dedo novamente", TFT_CYAN);
+  telaMensagem("Verificacao", "Mesma digital", TFT_CYAN);
   while (finger.getImage() != FINGERPRINT_OK) {
     vTaskDelay(pdMS_TO_TICKS(20));
   }
