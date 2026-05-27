@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback } from "react";
 import { FaSave, FaUndo, FaFingerprint, FaArrowAltCircleRight, FaTrash } from "react-icons/fa";
 import StatusBanner from "./StatusBanner";
 import { useWebSocket } from "../hooks/useWebSocket";
@@ -31,42 +31,6 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
     }
   }, []);
 
-  const stepRef = useRef(step);
-  const reservedBioIdRef = useRef(reservedBioId);
-  
-  useEffect(() => {
-    stepRef.current = step;
-  }, [step]);
-
-  useEffect(() => {
-    reservedBioIdRef.current = reservedBioId;
-  }, [reservedBioId]);
-
-  useEffect(() => {
-    return () => {
-      if (reservedBioIdRef.current && stepRef.current === 2) {
-        cancelarCadastroDigital(reservedBioIdRef.current, "effect_cleanup");
-      }
-    };
-  }, [cancelarCadastroDigital]);
-
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (reservedBioIdRef.current && stepRef.current === 2) {
-        const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
-        const url = `${baseUrl}/alunos/biometria/cancelar-cadastro`;
-        const blob = new Blob(
-          [JSON.stringify({ id: Number(reservedBioIdRef.current), reason: 'beforeunload' })],
-          { type: 'application/json' }
-        );
-        navigator.sendBeacon(url, blob);
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, []); // Sem dependências — usa refs para ler valores atuais sempre
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
