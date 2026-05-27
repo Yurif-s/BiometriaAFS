@@ -13,6 +13,7 @@ import DeleteConfirmModal from "./components/DeleteConfirmModal";
 import TurmasManager from "./components/TurmasManager";
 import Toast from "./components/Toast";
 import TerminalAcesso from "./components/TerminalAcesso";
+import Portaria from "./components/Portaria";
 
 import { useAlunos } from "./hooks/useAlunos";
 import { useTurmas } from "./hooks/useTurmas";
@@ -20,8 +21,9 @@ import { useStatus } from "./hooks/useStatus";
 import { useToast } from "./hooks/useToast";
 
 function App() {
-  // 'frequencia' = tela do terminal de acesso | 'admin' = painel administrativo
-  const [viewMode, setViewMode] = useState("frequencia");
+  // 'frequencia' = tela do terminal de acesso | 'admin' = painel administrativo | 'portaria' = tela do zelador
+  const initialViewMode = window.location.pathname.includes('/portaria') ? 'portaria' : 'frequencia';
+  const [viewMode, setViewMode] = useState(initialViewMode);
 
   const { turmas, turmaOptions, addTurma, deleteTurma, updateTurma, turmaExists } = useTurmas();
   const { alunos, addAluno, updateAluno, deleteAluno, matriculaExists } = useAlunos(turmaOptions);
@@ -107,6 +109,11 @@ function App() {
       return false;
     }
   };
+
+  // Se for visão da portaria, renderiza apenas o componente da Portaria (sem header/footer)
+  if (viewMode === "portaria") {
+    return <Portaria />;
+  }
 
   return (
     <div className="app">
