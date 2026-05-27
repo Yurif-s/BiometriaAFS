@@ -109,8 +109,8 @@ export default function TurmasManager({
                 <h3 style={{ margin: 0 }}>Gerenciar Turmas</h3>
             </div>
 
-            <div className="form-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", marginBottom: "20px" }}>
-                <div className="input-group" style={{ gridColumn: "span 2" }}>
+            <div className="form-grid turma-grid" style={{ marginBottom: "20px" }}>
+                <div className="input-group span-2">
                     <label>Nome da Turma</label>
                     <input
                         type="text"

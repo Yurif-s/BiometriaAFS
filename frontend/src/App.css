@@ -176,6 +176,14 @@ body{
   gap:22px;
 }
 
+.turma-grid {
+  grid-template-columns:repeat(3,1fr);
+}
+
+.span-2 {
+  grid-column: span 2;
+}
+
 .input-group{
   display:flex;
   flex-direction:column;
@@ -469,6 +477,8 @@ tbody tr:hover{
   padding:18px 20px;
   border-radius:16px;
   border:1px solid #d9f6df;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .confirm-row .confirm-label{
@@ -562,9 +572,10 @@ tbody tr:hover{
   display:flex;
   justify-content:center;
   align-items:flex-start;
-  padding-top:80px;
+  padding: 40px 10px;
   background:rgba(0,0,0,0.25);
   z-index:1200;
+  overflow-y:auto;
 }
 
 .edit-panel{
@@ -581,8 +592,10 @@ tbody tr:hover{
   display:flex;
   justify-content:center;
   align-items:center;
+  padding: 20px 10px;
   background:rgba(0,0,0,0.35);
   z-index:1300;
+  overflow-y:auto;
 }
 
 .confirm-box{
@@ -657,6 +670,12 @@ tbody tr:hover{
     padding:20px;
     flex-direction:column;
     gap:20px;
+    text-align: center;
+  }
+
+  .title-area{
+    flex-direction:column;
+    text-align:center;
   }
 
   .top-section{
@@ -711,8 +730,12 @@ tbody tr:hover{
     max-width:320px;
   }
 
-  .form-grid{
+  .form-grid, .turma-grid{
     grid-template-columns:1fr;
+  }
+
+  .span-2 {
+    grid-column: span 1;
   }
 
   .buttons{
@@ -727,6 +750,7 @@ tbody tr:hover{
 
   .novo-btn{
     width:100%;
+    text-align: center;
   }
 
   .aluno-title{
@@ -738,8 +762,19 @@ tbody tr:hover{
     font-size:34px;
   }
 
+  .title-area h1{
+    font-size: 22px;
+  }
+
   .card{
     overflow-x:auto;
+    padding: 20px;
+  }
+
+  .status-chip {
+    white-space: normal;
+    text-align: center;
+    height: auto;
   }
 
   table{
