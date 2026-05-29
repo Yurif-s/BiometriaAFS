@@ -18,7 +18,11 @@ export default function EditModal({ editingForm, turmaOptions, onChange, onUpdat
 
           <div className="input-group">
             <label>Matrícula</label>
-            <input type="text" value={editingForm.matricula} disabled />
+            <input
+              type="text"
+              value={editingForm.matricula}
+              onChange={(e) => onChange("matricula", e.target.value)}
+            />
           </div>
 
           <div className="input-group">

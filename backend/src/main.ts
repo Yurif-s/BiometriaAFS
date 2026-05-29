@@ -21,8 +21,28 @@ async function bootstrap() {
     allowedOrigins.push(vercelUrlNoHyphen);
   }
 
+  // Origem do site onde a extensão é injetada
+  const seducOrigin = 'https://professor.seduc.ce.gov.br';
+  if (!allowedOrigins.includes(seducOrigin)) {
+    allowedOrigins.push(seducOrigin);
+  }
+
   app.enableCors({
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      // Permitir requests sem origin (ex: extensões, curl, mobile)
+      if (!origin) {
+        return callback(null, true);
+      }
+      // Permitir chrome-extension:// origins
+      if (origin.startsWith('chrome-extension://')) {
+        return callback(null, true);
+      }
+      // Verificar lista de origens permitidas
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      callback(new Error(`Origin ${origin} não permitida pelo CORS`));
+    },
     credentials: true,
   });
 
