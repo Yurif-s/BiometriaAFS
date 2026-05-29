@@ -22,7 +22,8 @@ import { useToast } from "./hooks/useToast";
 
 function App() {
   // 'frequencia' = tela do terminal de acesso | 'admin' = painel administrativo | 'portaria' = tela do zelador
-  const initialViewMode = window.location.pathname.includes('/portaria') ? 'portaria' : 'frequencia';
+  const normalizedPath = window.location.pathname.toLowerCase().replace(/\/+$/, '');
+  const initialViewMode = normalizedPath === '/portaria' || normalizedPath.startsWith('/portaria/') ? 'portaria' : 'frequencia';
   const [viewMode, setViewMode] = useState(initialViewMode);
 
   const { turmas, turmaOptions, addTurma, deleteTurma, updateTurma, turmaExists } = useTurmas();
