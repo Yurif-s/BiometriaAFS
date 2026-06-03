@@ -61,9 +61,14 @@
 
         try {
 
+            const url = `${API_BASE}/turmas`;
+            console.log("REQUISIÇÃO PARA:", url);
+
             const response = await fetchApi("/turmas");
 
             console.log("RESPOSTA TURMAS:", response);
+            console.log("TIPO DA RESPOSTA:", typeof response);
+            console.log("É ARRAY?:", Array.isArray(response));
 
             if (Array.isArray(response) && response.length) {
 
@@ -71,44 +76,19 @@
                     id: t.id || t.turma_id || t.id_turma,
                     nome: t.nome || t.name || `Turma ${t.id || t.turma_id || t.id_turma}`
                 }));
+            } else if (Array.isArray(response) && response.length === 0) {
+                console.warn("API retornou array vazio");
+            } else if (response && typeof response === 'object') {
+                console.warn("Resposta não é array, estrutura:", Object.keys(response));
             }
 
         } catch (err) {
 
-            console.warn("Falha ao buscar /turmas, tentando /alunos", err);
-        }
+            console.error("ERRO AO BUSCAR TURMAS:", err);
+            console.error("URL tentada:", `${API_BASE}/turmas`);
 
-        // Fallback usando lista de alunos
-        if (!turmas.length) {
-
-            try {
-
-                const alunos = await fetchApi("/alunos");
-
-                if (Array.isArray(alunos) && alunos.length) {
-
-                    const ids = [
-                        ...new Set(
-                            alunos
-                                .map(aluno =>
-                                    aluno.turmaId ||
-                                    aluno.turma_id ||
-                                    aluno.turma ||
-                                    aluno.id_turma
-                                )
-                                .filter(Boolean)
-                        )
-                    ];
-
-                    turmas = ids.map(id => ({
-                        id,
-                        nome: `Turma ${id}`
-                    }));
-                }
-
-            } catch (err) {
-
-                console.error("Falha ao buscar /alunos", err);
+            if (status) {
+                status.textContent = `Erro: ${err.message || err}`;
             }
         }
 
@@ -332,7 +312,7 @@
         return window.BASE_TEMP || [];
     }
 
-    // Marca faltas no card
+    // Marca faltas no card (original)
     async function marcarF(card, tempos) {
 
         const togglesMap = getTogglesPorPeriodo(card);
@@ -383,6 +363,7 @@
         }
 
         const aulas = gerarAulas();
+        const temposAtivos = getTemposSelecionados();
 
         const data = {
             nomes: base.map(aluno => ({
@@ -419,27 +400,25 @@
         for (const c of cards) {
 
             const n = getNumero(c);
-
-            if (n != null) {
-                byNum.set(n, c);
-            }
+            if (n != null) byNum.set(n, c);
 
             const nm = getNome(c);
-
-            if (nm) {
-                byNome.set(norm(nm), c);
-            }
+            if (nm) byNome.set(norm(nm), c);
 
             const mat = getMatricula(c);
-
-            if (mat) {
-                byMatricula.set(mat, c);
-            }
+            if (mat) byMatricula.set(mat, c);
         }
+
+        // Conjunto de identificadores dos alunos presentes na base
+        const matriculasPresentes = new Set(
+            data.nomes.map(p => p.matricula).filter(Boolean)
+        );
+        const nomesPresentes = new Set(
+            data.nomes.map(p => norm(p.nome)).filter(Boolean)
+        );
 
         let ok = 0;
 
-        // Procura e aplica faltas
         for (const it of data.nomes) {
 
             let card = null;
@@ -474,6 +453,47 @@
             await sleep(70);
 
             if (await marcarF(card, it.tempos)) {
+                ok++;
+            }
+        }
+
+        for (const [mat, card] of byMatricula) {
+
+            // Pula alunos que já foram processados acima
+            if (matriculasPresentes.has(mat)) continue;
+
+            // Verifica também por nome para evitar duplicatas
+            const nome = getNome(card);
+
+            if (nome && nomesPresentes.has(norm(nome))) {
+                continue;
+            }
+
+            card.scrollIntoView({ block: "center" });
+            await sleep(70);
+
+            // Falta em todos os tempos ativos
+            if (await marcarF(card, temposAtivos)) {
+                ok++;
+            }
+        }
+
+        // Trata cards sem matrícula (fallback por nome)
+        for (const [nomeNorm, card] of byNome) {
+
+            const mat = getMatricula(card);
+
+            // Pula se já foi processado via matrícula
+            if (mat && byMatricula.has(mat)) {
+                continue;
+            }
+
+            if (nomesPresentes.has(nomeNorm)) continue;
+
+            card.scrollIntoView({ block: "center" });
+            await sleep(70);
+
+            if (await marcarF(card, temposAtivos)) {
                 ok++;
             }
         }
@@ -603,33 +623,21 @@
 
             await esperaCarregar();
 
-            const selectedTurma =
-                $("#ak-turma-select")?.value;
+            const selectedTurma = $("#ak-turma-select")?.value;
 
             if (selectedTurma) {
 
-                const ok =
-                    await carregarFaltososTurma(
-                        selectedTurma
-                    );
+                const ok = await carregarFaltososTurma(selectedTurma);
 
                 if (!ok) {
 
-                    alert(
-                        "Não foi possível carregar faltosos dessa turma."
-                    );
-
+                    alert("Não foi possível carregar faltosos dessa turma.");
                     return;
                 }
 
-            } else if (
-                !(window.BASE_TEMP && window.BASE_TEMP.length)
-            ) {
+            } else if (!(window.BASE_TEMP && window.BASE_TEMP.length)) {
 
-                alert(
-                    "Selecione uma turma antes de aplicar."
-                );
-
+                alert("Selecione uma turma antes de aplicar.");
                 return;
             }
 
@@ -640,17 +648,11 @@
         box.querySelector(".closebtn").onclick = () => {
 
             try {
-
-                window.__ak_guard &&
-                    window.__ak_guard.disconnect();
-
+                window.__ak_guard && window.__ak_guard.disconnect();
             } catch { }
 
             try {
-
-                window.__ak_panel &&
-                    window.__ak_panel.remove();
-
+                window.__ak_panel && window.__ak_panel.remove();
             } catch { }
 
             window.__ak_panel = null;
@@ -669,11 +671,8 @@
         }
 
         const base = window.BASE_TEMP || [];
-
         const select = $("#ak-turma-select");
-
-        const selectedName =
-            select?.selectedOptions?.[0]?.textContent;
+        const selectedName = select?.selectedOptions?.[0]?.textContent;
 
         s.textContent = base.length
             ? `${selectedName ? selectedName + " - " : ""}Carregados: ${base.length}`
@@ -690,27 +689,16 @@
         let base = [];
 
         if (Array.isArray(json)) {
-
             base = json;
-
-        } else if (
-            json.nomes &&
-            Array.isArray(json.nomes)
-        ) {
-
+        } else if (json.nomes && Array.isArray(json.nomes)) {
             base = json.nomes;
-
         } else if (json.matricula) {
-
             base = [json];
-
         } else {
-
             return false;
         }
 
         window.BASE_TEMP = base;
-
         atualizarStatus();
 
         return true;
@@ -723,27 +711,17 @@
 
         (msg, sender, sendResponse) => {
 
-            console.log(
-                "MENSAGEM RECEBIDA:",
-                msg
-            );
+            console.log("MENSAGEM RECEBIDA:", msg);
 
             // Inicializa painel
             if (msg.type === "INIT_FALTOSOS") {
 
                 (async () => {
 
-                    console.log(
-                        "INICIANDO PAINEL"
-                    );
-
+                    console.log("INICIANDO PAINEL");
                     await esperaCarregar();
-
                     montarUI();
-
-                    sendResponse({
-                        ok: true
-                    });
+                    sendResponse({ ok: true });
 
                 })();
 
@@ -753,13 +731,8 @@
             // Carrega JSON manualmente
             if (msg.type === "LOAD_FALTOSOS_JSON") {
 
-                const ok = carregarBaseJson(
-                    msg.payload
-                );
-
-                sendResponse({
-                    ok
-                });
+                const ok = carregarBaseJson(msg.payload);
+                sendResponse({ ok });
 
                 return true;
             }

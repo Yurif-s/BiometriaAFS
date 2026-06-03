@@ -10,7 +10,9 @@
   ],
   "host_permissions": [
     "https://professor.seduc.ce.gov.br/*",
-    "https://seu-backend.onrender.com/*",
+    "https://biometriaafs.onrender.com/*",
+    "https://biometria-afs.vercel.app/*",
+    "https://biometriaafs.vercel.app/*",
     "http://localhost:3000/*",
     "http://localhost/*",
     "http://127.0.0.1/*",
