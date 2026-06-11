@@ -8,7 +8,7 @@ import "./RelatoriosPage.css";
 export default function RelatoriosPage() {
   const [turmas, setTurmas] = useState([]);
   const [selectedTurmaId, setSelectedTurmaId] = useState("");
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
+  const [selectedDate, setSelectedDate] = useState(new Date().toLocaleDateString('en-CA'));
   
   const [frequenciaData, setFrequenciaData] = useState([]);
   const [loadingFreq, setLoadingFreq] = useState(false);

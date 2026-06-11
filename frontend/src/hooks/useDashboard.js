@@ -21,7 +21,7 @@ export function useDashboard(pollingIntervalMs = 30000) {
 
   const fetchPorHora = useCallback(async () => {
     try {
-      const todayStr = new Date().toISOString().slice(0, 10);
+      const todayStr = new Date().toLocaleDateString('en-CA');
       const data = await apiService.getDashboardPorHora(todayStr);
       setPorHora(data);
     } catch (err) {

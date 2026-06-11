@@ -114,7 +114,7 @@ export default function HistoricoPage({ showToast }) {
         </div>
         <ExportButton
           filters={filters}
-          filename={`historico_acessos_${new Date().toISOString().slice(0, 10)}.csv`}
+          filename={`historico_acessos_${new Date().toLocaleDateString('en-CA')}.csv`}
           onError={showToast}
         />
       </div>
