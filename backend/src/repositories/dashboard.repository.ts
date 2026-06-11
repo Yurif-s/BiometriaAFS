@@ -160,10 +160,10 @@ export class DashboardRepository {
     if (dataInicio || dataFim) {
       where.horario = {};
       if (dataInicio) {
-        where.horario.gte = new Date(dataInicio);
+        where.horario.gte = new Date(`${dataInicio}T00:00:00`);
       }
       if (dataFim) {
-        where.horario.lte = new Date(dataFim);
+        where.horario.lte = new Date(`${dataFim}T23:59:59.999`);
       }
     }
 
