@@ -7,12 +7,46 @@ export default function TerminalAcesso({ onGoToCadastro, onGoToAdmin, showToast 
   const [status, setStatus] = useState("idle"); // 'idle', 'success', 'error', 'prompt-cadastro'
   const [alunoInfo, setAlunoInfo] = useState(null);
   const [falhas, setFalhas] = useState(0);
-  const [ultimosAcessos, setUltimosAcessos] = useState([]);
+  const [dbAcessos, setDbAcessos] = useState(() => {
+    try {
+      const saved = localStorage.getItem("dbAcessos");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [dataFiltro, setDataFiltro] = useState("");
 
   // Atualiza relógio digital
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Persiste dbAcessos no localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem("dbAcessos", JSON.stringify(dbAcessos));
+    } catch (err) {
+      console.error("Erro ao salvar dbAcessos no localStorage:", err);
+    }
+  }, [dbAcessos]);
+
+  // Carrega últimos acessos do backend ao montar o componente
+  useEffect(() => {
+    const fetchUltimosAcessos = async () => {
+      try {
+        const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+        const response = await fetch(`${baseUrl}/acessos`);
+        if (response.ok) {
+          const data = await response.json();
+          setDbAcessos(data);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar acessos do backend:", err);
+      }
+    };
+    fetchUltimosAcessos();
   }, []);
 
   // Callback de Biometria Lida (Sucesso)
@@ -23,27 +57,33 @@ export default function TerminalAcesso({ onGoToCadastro, onGoToAdmin, showToast 
     const { alunoNome, alunoMatricula, alunoTurma, entrada, saida } = data;
 
     if (alunoNome) {
+      const horarioAcesso = saida || entrada || new Date().toISOString();
+
       // Aluno reconhecido
       setAlunoInfo({
         nome: alunoNome,
         matricula: alunoMatricula,
         turma: alunoTurma,
         tipo: saida ? "Saída" : "Entrada",
-        horario: new Date(saida || entrada).toLocaleTimeString(),
+        horario: new Date(horarioAcesso).toLocaleTimeString(),
       });
       setStatus("success");
       setFalhas(0);
 
-      // Adiciona na lista de últimos acessos
-      setUltimosAcessos((prev) => [
-        {
+      // Adiciona na lista geral de acessos
+      const novoAcesso = {
+        id: data.acessoId || Date.now(),
+        tipo: saida ? "Saída" : "Entrada",
+        horario: horarioAcesso,
+        aluno: {
           nome: alunoNome,
-          turma: alunoTurma,
-          tipo: saida ? "Saída" : "Entrada",
-          horario: new Date(saida || entrada).toLocaleTimeString(),
+          matricula: alunoMatricula,
+          turma: {
+            nome: alunoTurma,
+          },
         },
-        ...prev.slice(0, 4), // mantém apenas os 5 últimos
-      ]);
+      };
+      setDbAcessos((prev) => [novoAcesso, ...prev]);
 
       if (showToast) {
         showToast(`Bem-vindo(a), ${alunoNome}!`, "success");
@@ -86,6 +126,33 @@ export default function TerminalAcesso({ onGoToCadastro, onGoToAdmin, showToast 
     setFalhas(0);
     setStatus("idle");
   };
+
+  // Filtra e mapeia os acessos para o formato exibido
+  const getFilteredAcessos = () => {
+    let list = dbAcessos;
+
+    if (dataFiltro) {
+      list = dbAcessos.filter((acesso) => {
+        if (!acesso.horario) return false;
+        const dataAcesso = new Date(acesso.horario);
+        const ano = dataAcesso.getFullYear();
+        const mes = String(dataAcesso.getMonth() + 1).padStart(2, "0");
+        const dia = String(dataAcesso.getDate()).padStart(2, "0");
+        const dataAcessoStr = `${ano}-${mes}-${dia}`;
+        return dataAcessoStr === dataFiltro;
+      });
+    }
+
+    return list.slice(0, 5).map((acesso) => ({
+      id: acesso.id,
+      nome: acesso.aluno?.nome || "Aluno Desconhecido",
+      turma: acesso.aluno?.turma?.nome || "Sem Turma",
+      tipo: acesso.tipo,
+      horario: new Date(acesso.horario).toLocaleTimeString(),
+    }));
+  };
+
+  const ultimosAcessosExibidos = getFilteredAcessos();
 
   return (
     <div className="terminal-container">
@@ -184,14 +251,37 @@ export default function TerminalAcesso({ onGoToCadastro, onGoToAdmin, showToast 
             <FaHistory />
             <h3>Últimos Registros</h3>
           </div>
+
+          {/* Filtro por data */}
+          <div className="history-filter-container">
+            <span className="history-filter-label">Filtrar por data</span>
+            <div className="history-date-input-wrapper">
+              <input
+                type="date"
+                className="history-date-input"
+                value={dataFiltro}
+                onChange={(e) => setDataFiltro(e.target.value)}
+              />
+              {dataFiltro && (
+                <button
+                  className="history-clear-btn"
+                  onClick={() => setDataFiltro("")}
+                  title="Limpar filtro"
+                >
+                  Limpar
+                </button>
+              )}
+            </div>
+          </div>
+
           <div className="history-list">
-            {ultimosAcessos.length === 0 ? (
+            {ultimosAcessosExibidos.length === 0 ? (
               <div className="empty-history">
                 <p>Nenhum registro de acesso recente.</p>
               </div>
             ) : (
-              ultimosAcessos.map((acesso, i) => (
-                <div key={i} className={`history-item ${acesso.tipo.toLowerCase()}`}>
+              ultimosAcessosExibidos.map((acesso, i) => (
+                <div key={acesso.id || i} className={`history-item ${acesso.tipo.toLowerCase()}`}>
                   <div className="history-avatar">
                     {acesso.nome.charAt(0).toUpperCase()}
                   </div>
