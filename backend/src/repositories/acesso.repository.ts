@@ -19,6 +19,19 @@ export class AcessoRepository {
     });
   }
 
+  async findSaidaByAlunoHorario(alunoId: number, horario: Date): Promise<Acesso | null> {
+    return this.prisma.acesso.findFirst({
+      where: {
+        aluno_id: alunoId,
+        tipo: 'Saída',
+        horario,
+      },
+      orderBy: {
+        id: 'desc',
+      },
+    });
+  }
+
   async findAll(): Promise<Acesso[]> {
     return this.prisma.acesso.findMany({
       orderBy: {

@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { DashboardRepository } from '../repositories/dashboard.repository';
-import { HORARIOS_AULAS, calcularTempos } from '../constants/horarios-aulas';
+import {
+  HORARIOS_AULAS,
+  IntervaloPresenca,
+  calcularTemposPorIntervalos,
+} from '../constants/horarios-aulas';
 
 @Injectable()
 export class DashboardService {
@@ -137,23 +141,62 @@ export class DashboardService {
       return `${hh}:${mm}`;
     };
 
+    const montarIntervalosPresenca = (acessosAluno: typeof acessos): IntervaloPresenca[] => {
+      const intervalos: IntervaloPresenca[] = [];
+      let entradaAtual: Date | null = null;
+
+      acessosAluno.forEach(acesso => {
+        if (acesso.tipo === 'Entrada') {
+          entradaAtual = acesso.horario;
+          return;
+        }
+
+        if (acesso.tipo === 'Saída' && entradaAtual && acesso.horario > entradaAtual) {
+          intervalos.push({
+            entrada: helperFormatTime(entradaAtual),
+            saida: helperFormatTime(acesso.horario),
+          });
+          entradaAtual = null;
+        }
+      });
+
+      if (entradaAtual) {
+        intervalos.push({
+          entrada: helperFormatTime(entradaAtual),
+          saida: null,
+        });
+      }
+
+      return intervalos;
+    };
+
     return alunos.map(aluno => {
       const acessosAluno = acessos.filter(a => a.aluno_id === aluno.id);
 
       const entradaAcesso = acessosAluno.find(a => a.tipo === 'Entrada');
-      // A última saída deve ser depois da primeira entrada, se houver
-      const saidaAcesso = entradaAcesso 
-        ? [...acessosAluno].reverse().find(a => a.tipo === 'Saída' && a.horario > entradaAcesso.horario)
-        : null;
+      const saidaAcesso = [...acessosAluno].reverse().find(a => a.tipo === 'Saída');
+      const intervalosPresenca = montarIntervalosPresenca(acessosAluno);
 
       const entrada = entradaAcesso ? helperFormatTime(entradaAcesso.horario) : null;
       const saida = saidaAcesso ? helperFormatTime(saidaAcesso.horario) : null;
 
-      const periodosAusentes = calcularTempos(entrada, saida, HORARIOS_AULAS);
+      const periodosAusentes = calcularTemposPorIntervalos(intervalosPresenca, HORARIOS_AULAS);
 
       let status = 'Ausente';
-      if (entrada) {
-        status = saida ? 'Saiu' : 'Presente';
+      if (intervalosPresenca.length > 0) {
+        const ultimoIntervalo = intervalosPresenca[intervalosPresenca.length - 1];
+        const saidaUltimoIntervalo = ultimoIntervalo.saida
+          ? new Date(data)
+          : null;
+
+        if (saidaUltimoIntervalo && ultimoIntervalo.saida) {
+          const [hh, mm] = ultimoIntervalo.saida.split(':').map(Number);
+          saidaUltimoIntervalo.setHours(hh, mm, 0, 0);
+        }
+
+        status = !saidaUltimoIntervalo || saidaUltimoIntervalo > new Date()
+          ? 'Presente'
+          : 'Saiu';
       }
 
       return {

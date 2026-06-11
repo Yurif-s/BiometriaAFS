@@ -4,6 +4,11 @@ export interface HorarioAula {
   fim: string;
 }
 
+export interface IntervaloPresenca {
+  entrada: string;
+  saida: string | null;
+}
+
 export const HORARIOS_AULAS: HorarioAula[] = [
   { periodo: 1, inicio: "07:20", fim: "08:10" },
   { periodo: 2, inicio: "08:10", fim: "09:00" },
@@ -23,14 +28,27 @@ export function toMin(h: string): number | null {
 }
 
 export function calcularTempos(entrada: string | null, saida: string | null, aulas: HorarioAula[] = HORARIOS_AULAS): number[] {
-  if (!entrada && !saida) {
+  return entrada
+    ? calcularTemposPorIntervalos([{ entrada, saida }], aulas)
+    : aulas.map(aula => aula.periodo);
+}
+
+export function calcularTemposPorIntervalos(
+  intervalos: IntervaloPresenca[],
+  aulas: HorarioAula[] = HORARIOS_AULAS,
+): number[] {
+  if (intervalos.length === 0) {
     return aulas.map(aula => aula.periodo);
   }
 
-  const ent = entrada ? toMin(entrada) : null;
-  const sai = saida ? toMin(saida) : null;
+  const intervalosMin = intervalos
+    .map(intervalo => ({
+      entrada: toMin(intervalo.entrada),
+      saida: intervalo.saida ? toMin(intervalo.saida) : null,
+    }))
+    .filter(intervalo => intervalo.entrada !== null);
 
-  if (ent === null && sai === null) {
+  if (intervalosMin.length === 0) {
     return aulas.map(aula => aula.periodo);
   }
 
@@ -39,7 +57,11 @@ export function calcularTempos(entrada: string | null, saida: string | null, aul
     const ini = toMin(aula.inicio)!;
     const fim = toMin(aula.fim)!;
 
-    const presente = ent !== null && ent < fim && (sai === null || sai > ini);
+    const presente = intervalosMin.some(intervalo => (
+      intervalo.entrada !== null
+      && intervalo.entrada < fim
+      && (intervalo.saida === null || intervalo.saida > ini)
+    ));
 
     if (!presente) {
       tempos.push(aula.periodo);

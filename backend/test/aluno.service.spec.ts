@@ -31,6 +31,7 @@ describe('AlunoService', () => {
             findByMatricula: jest.fn(),
             findByBiometria: jest.fn(),
             findByTurmaId: jest.fn(),
+            findPresentesSemSaidaDesde: jest.fn(),
             update: jest.fn(),
             delete: jest.fn(),
           },
@@ -55,6 +56,7 @@ describe('AlunoService', () => {
             findAll: jest.fn(),
             findToday: jest.fn(),
             findById: jest.fn(),
+            findSaidaByAlunoHorario: jest.fn(),
             update: jest.fn(),
             delete: jest.fn(),
           },
@@ -66,6 +68,8 @@ describe('AlunoService', () => {
     alunoRepository = module.get(AlunoRepository);
     turmaRepository = module.get(TurmaRepository);
     biometriaGateway = module.get(BiometriaGateway);
+    acessoRepository = module.get(AcessoRepository);
+    jest.useRealTimers();
   });
 
   // =========================
@@ -73,8 +77,13 @@ describe('AlunoService', () => {
   // =========================
   describe('registrarLeitura', () => {
     it('deve registrar leitura de um aluno cadastrado e emitir evento', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-06-11T07:20:00'));
       const alunoMock = { id: 1, nome: 'João', biometria: 123, entrada: null, saida: null, turma_id: 1 } as any;
-      const updatedAlunoMock = { ...alunoMock, entrada: new Date() };
+      const updatedAlunoMock = {
+        ...alunoMock,
+        entrada: new Date('2026-06-11T07:20:00'),
+        saida: new Date('2026-06-11T16:35:00'),
+      };
       alunoRepository.findByBiometria.mockResolvedValue(alunoMock);
       alunoRepository.update.mockResolvedValue(updatedAlunoMock);
       turmaRepository.findById.mockResolvedValue({ id: 1, nome: 'Turma A' } as any);
@@ -89,8 +98,92 @@ describe('AlunoService', () => {
         undefined,
         'Turma A',
         expect.any(Date),
-        null
+        new Date('2026-06-11T16:35:00')
       );
+      expect(acessoRepository.create).toHaveBeenCalledWith({
+        aluno_id: 1,
+        tipo: 'Entrada',
+        horario: new Date('2026-06-11T07:20:00'),
+      });
+      expect(acessoRepository.create).toHaveBeenCalledWith({
+        aluno_id: 1,
+        tipo: 'Saída',
+        horario: new Date('2026-06-11T16:35:00'),
+      });
+    });
+
+    it('deve registrar entrada no dia seguinte mesmo se o aluno saiu no dia anterior', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-06-11T07:20:00'));
+      const ontemEntrada = new Date('2026-06-10T07:15:00');
+      const ontemSaida = new Date('2026-06-10T16:35:00');
+      const alunoMock = {
+        id: 1,
+        nome: 'João',
+        biometria: 123,
+        entrada: ontemEntrada,
+        saida: ontemSaida,
+        turma_id: 1,
+      } as any;
+      const updatedAlunoMock = {
+        ...alunoMock,
+        entrada: new Date('2026-06-11T07:20:00'),
+        saida: new Date('2026-06-11T16:35:00'),
+      };
+      alunoRepository.findByBiometria.mockResolvedValue(alunoMock);
+      alunoRepository.update.mockResolvedValue(updatedAlunoMock);
+      turmaRepository.findById.mockResolvedValue({ id: 1, nome: 'Turma A' } as any);
+
+      await service.registrarLeitura(123);
+
+      expect(alunoRepository.update).toHaveBeenCalledWith(1, {
+        entrada: new Date('2026-06-11T07:20:00'),
+        saida: new Date('2026-06-11T16:35:00'),
+      });
+      expect(acessoRepository.create).toHaveBeenCalledWith({
+        aluno_id: 1,
+        tipo: 'Entrada',
+        horario: new Date('2026-06-11T07:20:00'),
+      });
+      expect(acessoRepository.create).toHaveBeenCalledWith({
+        aluno_id: 1,
+        tipo: 'Saída',
+        horario: new Date('2026-06-11T16:35:00'),
+      });
+    });
+
+    it('deve substituir a saída padrão pelo horário real quando sair antes das 16:35', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-06-11T10:15:00'));
+      const saidaPadrao = new Date('2026-06-11T16:35:00');
+      const alunoMock = {
+        id: 1,
+        nome: 'João',
+        biometria: 123,
+        entrada: new Date('2026-06-11T07:20:00'),
+        saida: saidaPadrao,
+        turma_id: 1,
+      } as any;
+      const updatedAlunoMock = {
+        ...alunoMock,
+        saida: new Date('2026-06-11T10:15:00'),
+      };
+      alunoRepository.findByBiometria.mockResolvedValue(alunoMock);
+      alunoRepository.update.mockResolvedValue(updatedAlunoMock);
+      turmaRepository.findById.mockResolvedValue({ id: 1, nome: 'Turma A' } as any);
+      acessoRepository.findSaidaByAlunoHorario.mockResolvedValue({
+        id: 10,
+        aluno_id: 1,
+        tipo: 'Saída',
+        horario: saidaPadrao,
+      } as any);
+
+      await service.registrarLeitura(123);
+
+      expect(alunoRepository.update).toHaveBeenCalledWith(1, {
+        saida: new Date('2026-06-11T10:15:00'),
+      });
+      expect(acessoRepository.update).toHaveBeenCalledWith(10, {
+        horario: new Date('2026-06-11T10:15:00'),
+      });
     });
 
     it('deve registrar leitura de biometria não cadastrada e emitir evento com nome indefinido', async () => {
@@ -108,6 +201,42 @@ describe('AlunoService', () => {
         undefined,
         undefined
       );
+    });
+  });
+
+  describe('marcarSaidasPadraoSeNecessario', () => {
+    it('não deve marcar saída automática antes das 16:35', async () => {
+      await service.marcarSaidasPadraoSeNecessario(new Date('2026-06-11T16:34:00'));
+
+      expect(alunoRepository.findPresentesSemSaidaDesde).not.toHaveBeenCalled();
+    });
+
+    it('deve marcar saída automática às 16:35 para alunos presentes sem saída', async () => {
+      const alunoMock = {
+        id: 1,
+        nome: 'Maria',
+        entrada: new Date('2026-06-11T07:10:00'),
+        saida: null,
+      } as any;
+      alunoRepository.findPresentesSemSaidaDesde.mockResolvedValue([alunoMock]);
+      alunoRepository.update.mockResolvedValue({
+        ...alunoMock,
+        saida: new Date('2026-06-11T16:35:00'),
+      });
+
+      await service.marcarSaidasPadraoSeNecessario(new Date('2026-06-11T16:35:10'));
+
+      expect(alunoRepository.findPresentesSemSaidaDesde).toHaveBeenCalledWith(
+        new Date('2026-06-11T00:00:00'),
+      );
+      expect(alunoRepository.update).toHaveBeenCalledWith(1, {
+        saida: new Date('2026-06-11T16:35:00'),
+      });
+      expect(acessoRepository.create).toHaveBeenCalledWith({
+        aluno_id: 1,
+        tipo: 'Saída',
+        horario: new Date('2026-06-11T16:35:00'),
+      });
     });
   });
 
