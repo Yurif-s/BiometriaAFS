@@ -30,7 +30,7 @@ body{
 
 .logo{
   width:480px;
-  
+
   object-fit:contain;
 }
 
@@ -623,7 +623,7 @@ tbody tr:hover{
   background: #ff4b4b;
   box-shadow: 0 10px 20px rgba(255, 75, 75, 0.25);
 }
- 
+
 .confirm-yes.salvar:hover {
   background: #e03333;
 }
@@ -1531,4 +1531,101 @@ tbody tr:hover{
 
 .confirm-btn:active {
   transform: scale(0.97);
-}
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+:where(button, a, input, select):focus-visible {
+  outline: 3px solid rgba(0, 146, 69, 0.35);
+  outline-offset: 3px;
+}
+
+.page-loader {
+  min-height: 60vh;
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  color: #475569;
+  font-weight: 600;
+}
+
+.modal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.modal-title-row h3 {
+  margin: 0;
+}
+
+.danger-icon-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: rgba(255, 75, 75, 0.1);
+  border: 1px solid rgba(255, 75, 75, 0.2);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #ff4b4b;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.confirm-message {
+  color: #555;
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 28px;
+}
+
+.modal-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.modal-header-row h3 {
+  margin: 0;
+}
+
+.modal-close-btn {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  background: none;
+  border: none;
+  border-radius: 10px;
+  color: #666;
+  cursor: pointer;
+  font-size: 22px;
+}
+
+.modal-close-btn:hover {
+  background: #f1f5f9;
+  color: #111827;
+}
+
+.modal-error {
+  margin-top: 16px;
+}
+
+.modal-actions {
+  margin-top: 32px;
+}

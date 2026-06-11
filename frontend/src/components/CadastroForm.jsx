@@ -1,7 +1,8 @@
-import { useState, useCallback } from "react";
-import { FaSave, FaUndo, FaFingerprint, FaArrowAltCircleRight, FaTrash } from "react-icons/fa";
+import { useCallback, useState } from "react";
+import { FaArrowAltCircleRight, FaFingerprint, FaTrash } from "react-icons/fa";
 import StatusBanner from "./StatusBanner";
 import { useWebSocket } from "../hooks/useWebSocket";
+import { cancelarCadastroBiometria, iniciarCadastroBiometria } from "../services/api";
 
 const emptyForm = { nome: "", matricula: "", turma: "", biometria: "" };
 const emptyErrors = { nome: false, matricula: false, turma: false };
@@ -10,7 +11,6 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
   const [formData, setFormData] = useState(emptyForm);
   const [errors, setErrors] = useState(emptyErrors);
   const [step, setStep] = useState(1);
-  const [biometricLoading, setBiometricLoading] = useState(false);
   const [savingAnim, setSavingAnim] = useState(false);
   const [clearingAnim, setClearingAnim] = useState(false);
   const [aguardandoBio, setAguardandoBio] = useState(false);
@@ -19,18 +19,11 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
   const cancelarCadastroDigital = useCallback(async (id, reason = "unknown") => {
     if (!id) return;
     try {
-      const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
-      await fetch(`${baseUrl}/alunos/biometria/cancelar-cadastro`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: Number(id), reason }),
-      });
-      console.log(`Cadastro cancelado para o ID biométrico: ${id} | Motivo: ${reason}`);
+      await cancelarCadastroBiometria(id, reason);
     } catch (error) {
       console.error("Erro ao cancelar cadastro digital:", error);
     }
   }, []);
-
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -59,44 +52,32 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
   const handleBiometriaRecebida = useCallback(({ biometriaId, alunoNome }) => {
     if (!aguardandoBio) return;
     if (alunoNome) {
-      if (showToast) showToast(`Digital já pertence a ${alunoNome}`, 'error');
+      if (showToast) showToast(`Digital ja pertence a ${alunoNome}`, "error");
       setAguardandoBio(false);
       return;
     }
-    // Se o ID recebido for diferente do reservado originalmente (reuso de digital órfã),
-    // cancela a reserva original para liberá-la no sensor
+
     if (reservedBioId && Number(reservedBioId) !== Number(biometriaId)) {
-      console.log(`[CadastroForm] ID diferente recebido. Cancelando reserva original ${reservedBioId}`);
       cancelarCadastroDigital(reservedBioId, "id_mismatch");
     }
+
     setReservedBioId(biometriaId);
-    setFormData(prev => ({ ...prev, biometria: biometriaId }));
+    setFormData((prev) => ({ ...prev, biometria: biometriaId }));
     setAguardandoBio(false);
     setStep(3);
-  }, [aguardandoBio, showToast, reservedBioId, cancelarCadastroDigital]);
+  }, [aguardandoBio, cancelarCadastroDigital, reservedBioId, showToast]);
 
   useWebSocket(handleBiometriaRecebida);
 
   const handleCollectDigital = async () => {
     setAguardandoBio(true);
     try {
-      const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
-      const response = await fetch(`${baseUrl}/alunos/biometria/iniciar-cadastro`, {
-        method: "POST",
-      });
-      if (!response.ok) {
-        throw new Error("Erro ao iniciar cadastro de biometria");
-      }
-      const data = await response.json();
+      const data = await iniciarCadastroBiometria();
       setReservedBioId(data.id);
-      if (showToast) {
-        showToast(`Sensor ativado! Grave a digital no ID: ${data.id}`, "info");
-      }
+      if (showToast) showToast(`Sensor ativado! Grave a digital no ID: ${data.id}`, "info");
     } catch (error) {
       console.error(error);
-      if (showToast) {
-        showToast("Erro ao iniciar cadastro no sensor biométrico", "error");
-      }
+      if (showToast) showToast("Erro ao iniciar cadastro no sensor biometrico", "error");
       setAguardandoBio(false);
     }
   };
@@ -121,53 +102,62 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
     setErrors(emptyErrors);
   };
 
-  const selectedTurmaName = turmaOptions.find(t => String(t.id) === String(formData.turma))?.nome ?? formData.turma;
+  const selectedTurmaName = turmaOptions.find((turma) => String(turma.id) === String(formData.turma))?.nome ?? formData.turma;
 
   return (
-    <section className="card">
+    <section className="card" aria-labelledby="cadastro-aluno-title">
       {showStatus && <StatusBanner message={statusMessage} />}
 
       {step === 1 && (
         <>
-          <h3>Cadastrar Aluno</h3>
+          <h3 id="cadastro-aluno-title">Cadastrar Aluno</h3>
           <div className="form-grid">
             <div className="input-group">
-              <label>Nome</label>
+              <label htmlFor="aluno-nome">Nome</label>
               <input
+                id="aluno-nome"
                 type="text"
                 placeholder="Nome completo do aluno"
                 value={formData.nome}
-                onChange={(e) => handleInputChange("nome", e.target.value)}
+                onChange={(event) => handleInputChange("nome", event.target.value)}
                 className={errors.nome ? "input-error" : ""}
+                aria-invalid={errors.nome}
+                aria-describedby={errors.nome ? "aluno-nome-error" : undefined}
               />
-              {errors.nome && <small className="error-msg">Campo obrigatório</small>}
+              {errors.nome && <small id="aluno-nome-error" className="error-msg">Campo obrigatorio</small>}
             </div>
 
             <div className="input-group">
-              <label>Matrícula</label>
+              <label htmlFor="aluno-matricula">Matricula</label>
               <input
+                id="aluno-matricula"
                 type="text"
-                placeholder="Número da matrícula"
+                placeholder="Numero da matricula"
                 value={formData.matricula}
-                onChange={(e) => handleInputChange("matricula", e.target.value)}
+                onChange={(event) => handleInputChange("matricula", event.target.value)}
                 className={errors.matricula ? "input-error" : ""}
+                aria-invalid={errors.matricula}
+                aria-describedby={errors.matricula ? "aluno-matricula-error" : undefined}
               />
-              {errors.matricula && <small className="error-msg">Campo obrigatório</small>}
+              {errors.matricula && <small id="aluno-matricula-error" className="error-msg">Campo obrigatorio</small>}
             </div>
 
             <div className="input-group">
-              <label>Turma</label>
+              <label htmlFor="aluno-turma">Turma</label>
               <select
+                id="aluno-turma"
                 value={formData.turma}
-                onChange={(e) => handleInputChange("turma", e.target.value)}
+                onChange={(event) => handleInputChange("turma", event.target.value)}
                 className={errors.turma ? "input-error" : ""}
+                aria-invalid={errors.turma}
+                aria-describedby={errors.turma ? "aluno-turma-error" : undefined}
               >
                 <option value="">Selecione a turma</option>
                 {turmaOptions.map((turma) => (
                   <option key={turma.id} value={turma.id}>{turma.nome}</option>
                 ))}
               </select>
-              {errors.turma && <small className="error-msg">Campo obrigatório</small>}
+              {errors.turma && <small id="aluno-turma-error" className="error-msg">Campo obrigatorio</small>}
             </div>
           </div>
 
@@ -178,7 +168,7 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
               onClick={handleSave}
             >
               Prosseguir
-              <FaArrowAltCircleRight />
+              <FaArrowAltCircleRight aria-hidden="true" />
             </button>
             <button
               type="button"
@@ -186,20 +176,20 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
               onClick={handleClear}
             >
               Limpar
-              <FaTrash />
+              <FaTrash aria-hidden="true" />
             </button>
           </div>
         </>
       )}
 
       {step === 2 && (
-        <div className="biometric-card">
-          <h3>Leitura Biométrica</h3>
+        <div className="biometric-card" aria-live="polite">
+          <h3>Leitura Biometrica</h3>
           <p className="biometric-text">
             Posicione o dedo no sensor para coletar a digital do aluno
           </p>
           <div className="biometric-preview">
-            <div className={`fingerprint-icon ${aguardandoBio ? "loading" : ""}`}>
+            <div className={`fingerprint-icon ${aguardandoBio ? "loading" : ""}`} aria-hidden="true">
               <FaFingerprint />
             </div>
           </div>
@@ -228,21 +218,21 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
 
       {step === 3 && (
         <div className="confirmation-card">
-          <h3>Confirmação</h3>
+          <h3>Confirmacao</h3>
           <div className="confirm-content">
             <div className="confirm-row">
               <span className="confirm-label">Nome</span>
               <strong>{formData.nome}</strong>
             </div>
             <div className="confirm-row">
-              <span className="confirm-label">Matrícula</span>
+              <span className="confirm-label">Matricula</span>
               <strong>{formData.matricula}</strong>
             </div>
             <div className="confirm-row">
               <span className="confirm-label">Turma</span>
               <strong>{selectedTurmaName}</strong>
             </div>
-            <div className="status-chip">Digital cadastrada (ID: {formData.biometria}) ✅</div>
+            <div className="status-chip">Digital cadastrada (ID: {formData.biometria})</div>
           </div>
           <div className="buttons">
             <button type="button" className="limpar" onClick={() => setStep(1)}>

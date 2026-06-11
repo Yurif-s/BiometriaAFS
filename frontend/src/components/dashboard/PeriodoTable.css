@@ -1,0 +1,38 @@
+.period-table th.period-header {
+  text-align: center;
+  font-size: 11px;
+  cursor: help;
+  position: relative;
+  background-color: #f8fafc;
+  width: 44px;
+}
+
+.period-cell {
+  vertical-align: middle;
+}
+
+.period-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+}
+
+.period-dot.present {
+  background-color: #e6f5ec;
+  color: #009245;
+}
+
+.period-dot.absent {
+  background-color: #fef2f2;
+  color: #ef4444;
+}
+
+.status-badge.warning {
+  background-color: #fff2e6;
+  color: #ea580c;
+  border: 1px solid #ffd8b3;
+}

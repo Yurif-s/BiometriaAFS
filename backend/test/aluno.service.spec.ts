@@ -9,12 +9,14 @@ import { AlunoService } from '../src/services/aluno.service';
 import { AlunoRepository } from '../src/repositories/aluno.repository';
 import { TurmaRepository } from '../src/repositories/turma.repository';
 import { BiometriaGateway } from '../src/gateways/biometria.gateway';
+import { AcessoRepository } from '../src/repositories/acesso.repository';
 
 describe('AlunoService', () => {
   let service: AlunoService;
   let alunoRepository: jest.Mocked<AlunoRepository>;
   let turmaRepository: jest.Mocked<TurmaRepository>;
   let biometriaGateway: jest.Mocked<BiometriaGateway>;
+  let acessoRepository: jest.Mocked<AcessoRepository>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -43,6 +45,18 @@ describe('AlunoService', () => {
           provide: BiometriaGateway,
           useValue: {
             emitirBiometriaLida: jest.fn(),
+            emitirBiometriaFalha: jest.fn(),
+          },
+        },
+        {
+          provide: AcessoRepository,
+          useValue: {
+            create: jest.fn(),
+            findAll: jest.fn(),
+            findToday: jest.fn(),
+            findById: jest.fn(),
+            update: jest.fn(),
+            delete: jest.fn(),
           },
         },
       ],
@@ -59,14 +73,24 @@ describe('AlunoService', () => {
   // =========================
   describe('registrarLeitura', () => {
     it('deve registrar leitura de um aluno cadastrado e emitir evento', async () => {
-      const alunoMock = { id: 1, nome: 'João', biometria: 123 } as any;
+      const alunoMock = { id: 1, nome: 'João', biometria: 123, entrada: null, saida: null, turma_id: 1 } as any;
+      const updatedAlunoMock = { ...alunoMock, entrada: new Date() };
       alunoRepository.findByBiometria.mockResolvedValue(alunoMock);
+      alunoRepository.update.mockResolvedValue(updatedAlunoMock);
+      turmaRepository.findById.mockResolvedValue({ id: 1, nome: 'Turma A' } as any);
 
       const result = await service.registrarLeitura(123);
 
-      expect(result).toEqual({ encontrado: true, aluno: alunoMock });
+      expect(result).toEqual({ encontrado: true, aluno: updatedAlunoMock });
       expect(alunoRepository.findByBiometria).toHaveBeenCalledWith(123);
-      expect(biometriaGateway.emitirBiometriaLida).toHaveBeenCalledWith(123, 'João');
+      expect(biometriaGateway.emitirBiometriaLida).toHaveBeenCalledWith(
+        123,
+        'João',
+        undefined,
+        'Turma A',
+        expect.any(Date),
+        null
+      );
     });
 
     it('deve registrar leitura de biometria não cadastrada e emitir evento com nome indefinido', async () => {
@@ -76,7 +100,14 @@ describe('AlunoService', () => {
 
       expect(result).toEqual({ encontrado: false, aluno: undefined });
       expect(alunoRepository.findByBiometria).toHaveBeenCalledWith(456);
-      expect(biometriaGateway.emitirBiometriaLida).toHaveBeenCalledWith(456, undefined);
+      expect(biometriaGateway.emitirBiometriaLida).toHaveBeenCalledWith(
+        456,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined
+      );
     });
   });
 
@@ -233,7 +264,7 @@ describe('AlunoService', () => {
   // =========================
   describe('delete', () => {
     it('deve deletar aluno com sucesso', async () => {
-      alunoRepository.findById.mockResolvedValue({ id: 1 } as any);
+      alunoRepository.findById.mockResolvedValue({ id: 1, biometria: 1 } as any);
 
       await service.delete(1);
 

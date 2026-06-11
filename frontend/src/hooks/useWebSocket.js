@@ -1,13 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
-
-let socket = null;
+import { API_BASE_URL } from '../services/api';
 
 export function useWebSocket(onBiometriaLida, onBiometriaFalha) {
+  const socketRef = useRef(null);
   const onBiometriaLidaRef = useRef(onBiometriaLida);
   const onBiometriaFalhaRef = useRef(onBiometriaFalha);
 
-  // Manter as refs atualizadas sem causar re-render do useEffect
   useEffect(() => {
     onBiometriaLidaRef.current = onBiometriaLida;
   }, [onBiometriaLida]);
@@ -17,21 +16,27 @@ export function useWebSocket(onBiometriaLida, onBiometriaFalha) {
   }, [onBiometriaFalha]);
 
   useEffect(() => {
-    socket = io(import.meta.env.VITE_API_URL ?? 'http://localhost:3000', {
+    const socket = io(API_BASE_URL, {
       transports: ['websocket'],
     });
+    socketRef.current = socket;
 
-    socket.on('biometria-lida', (data) => {
+    const handleBiometriaLida = (data) => {
       if (onBiometriaLidaRef.current) onBiometriaLidaRef.current(data);
-    });
+    };
 
-    socket.on('biometria-falha', () => {
+    const handleBiometriaFalha = () => {
       if (onBiometriaFalhaRef.current) onBiometriaFalhaRef.current();
-    });
+    };
+
+    socket.on('biometria-lida', handleBiometriaLida);
+    socket.on('biometria-falha', handleBiometriaFalha);
 
     return () => {
-      socket?.disconnect();
-      socket = null;
+      socket.off('biometria-lida', handleBiometriaLida);
+      socket.off('biometria-falha', handleBiometriaFalha);
+      socket.disconnect();
+      socketRef.current = null;
     };
-  }, []); // Roda apenas uma vez na montagem
-}
+  }, []);
+}

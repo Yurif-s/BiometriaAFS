@@ -1,0 +1,126 @@
+.filtros-acesso-form {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.filtros-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.filtros-grid .busca-item {
+  grid-column: span 2;
+}
+
+.filtro-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filtro-item label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filtro-input,
+.filtro-select {
+  padding: 10px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 14px;
+  background-color: #fff;
+  color: #1e293b;
+  transition: border-color 0.2s;
+  outline: none;
+  margin-bottom: 0;
+}
+
+.filtro-input:focus,
+.filtro-select:focus {
+  border-color: #009245;
+}
+
+.busca-input-container {
+  display: flex;
+  position: relative;
+  width: 100%;
+}
+
+.filtro-input-busca {
+  flex: 1;
+  padding: 10px 48px 10px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+}
+
+.filtro-input-busca:focus {
+  border-color: #009245;
+}
+
+.btn-busca-submit {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 44px;
+  background-color: #009245;
+  color: white;
+  border: none;
+  border-radius: 0 10px 10px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: background-color 0.2s;
+  padding: 0;
+}
+
+.btn-busca-submit:hover {
+  background-color: #007d3b;
+}
+
+.filtros-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-clear-filtros {
+  background-color: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.btn-clear-filtros:hover {
+  background-color: #e2e8f0;
+  color: #1e293b;
+}
+
+@media (max-width: 768px) {
+  .filtros-grid .busca-item {
+    grid-column: span 1;
+  }
+}

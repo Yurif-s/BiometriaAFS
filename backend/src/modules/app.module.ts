@@ -12,10 +12,13 @@ import { BiometriaGateway } from '../gateways/biometria.gateway';
 import { AcessoController } from '../controllers/acesso.controller';
 import { AcessoService } from '../services/acesso.service';
 import { AcessoRepository } from '../repositories/acesso.repository';
+import { DashboardController } from '../controllers/dashboard.controller';
+import { DashboardService } from '../services/dashboard.service';
+import { DashboardRepository } from '../repositories/dashboard.repository';
 
 @Module({
   imports: [],
-  controllers: [AppController, TurmaController, AlunoController, AcessoController],
+  controllers: [AppController, TurmaController, AlunoController, AcessoController, DashboardController],
   providers: [
     AppService, 
     PrismaService, 
@@ -25,7 +28,9 @@ import { AcessoRepository } from '../repositories/acesso.repository';
     AlunoRepository, 
     BiometriaGateway,
     AcessoService,
-    AcessoRepository
+    AcessoRepository,
+    DashboardService,
+    DashboardRepository
   ],
 })
 export class AppModule {}

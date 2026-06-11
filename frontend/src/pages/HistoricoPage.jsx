@@ -1,18 +1,64 @@
 import React, { useEffect, useState } from "react";
-import { FaHistory, FaTrash, FaEdit } from "react-icons/fa";
+import { FaHistory, FaTrash, FaEdit, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { useAcessos } from "../hooks/useAcessos";
-import DeleteConfirmModal from "./DeleteConfirmModal";
+import FiltrosAcesso from "../components/dashboard/FiltrosAcesso";
+import ExportButton from "../components/dashboard/ExportButton";
+import DeleteConfirmModal from "../components/DeleteConfirmModal";
+import "./HistoricoPage.css";
 
-export default function AcessosManager({ showToast }) {
-  const { todosAcessos, fetchTodosAcessos, updateAcesso, deleteAcesso, loading } = useAcessos();
+export default function HistoricoPage({ showToast }) {
+  const {
+    paginatedAcessos,
+    totalPages,
+    totalItems,
+    loading,
+    fetchAcessosFiltrados,
+    updateAcesso,
+    deleteAcesso
+  } = useAcessos();
+
+  const [filters, setFilters] = useState({
+    dataInicio: "",
+    dataFim: "",
+    turmaId: "",
+    tipo: "",
+    busca: ""
+  });
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
+  useEffect(() => {
+    fetchAcessosFiltrados({ ...filters, page, limit });
+  }, [filters, page, fetchAcessosFiltrados]);
+
+  const handleFilter = (newFilters) => {
+    // Normalizar strings vazias
+    const cleaned = {};
+    Object.keys(newFilters).forEach(key => {
+      if (newFilters[key] !== "") {
+        cleaned[key] = newFilters[key];
+      }
+    });
+    setFilters(cleaned);
+    setPage(1);
+  };
+
+  const handleClear = () => {
+    setFilters({
+      dataInicio: "",
+      dataFim: "",
+      turmaId: "",
+      tipo: "",
+      busca: ""
+    });
+    setPage(1);
+  };
+
+  // Edição inline
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({ tipo: "", horario: "" });
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-
-  useEffect(() => {
-    fetchTodosAcessos();
-  }, [fetchTodosAcessos]);
 
   const handleEdit = (acesso) => {
     setEditingId(acesso.id);
@@ -20,7 +66,7 @@ export default function AcessosManager({ showToast }) {
     date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
     setEditForm({
       tipo: acesso.tipo,
-      horario: date.toISOString().slice(0, 16) // yyyy-MM-ddThh:mm
+      horario: date.toISOString().slice(0, 16)
     });
   };
 
@@ -30,7 +76,7 @@ export default function AcessosManager({ showToast }) {
         tipo: editForm.tipo,
         horario: new Date(editForm.horario).toISOString(),
       });
-      showToast("Acesso atualizado com sucesso!", "success");
+      showToast("Acesso atualizado com sucesso!");
       setEditingId(null);
     } catch (err) {
       showToast("Erro ao atualizar acesso.", "error");
@@ -42,7 +88,7 @@ export default function AcessosManager({ showToast }) {
     setDeleteLoading(true);
     try {
       await deleteAcesso(deleteTarget.id);
-      showToast("Acesso removido com sucesso!", "success");
+      showToast("Acesso removido com sucesso!");
       setDeleteTarget(null);
     } catch (err) {
       showToast("Erro ao remover acesso.", "error");
@@ -52,17 +98,33 @@ export default function AcessosManager({ showToast }) {
   };
 
   return (
-    <section className="acessos-manager-section" style={{ marginTop: "2rem" }}>
-      <div className="section-header">
+    <div className="historico-page">
+      <div className="historico-header">
         <div className="title-with-icon">
-          <FaHistory className="section-icon" />
-          <h3>Histórico de Frequência</h3>
+          <FaHistory className="page-icon" />
+          <h2>Histórico de Acessos</h2>
         </div>
       </div>
 
-      <div className="table-container">
+      <FiltrosAcesso onFilter={handleFilter} onClear={handleClear} />
+
+      <div className="historico-actions-bar">
+        <div className="total-items">
+          Total de registros encontrados: <strong>{totalItems}</strong>
+        </div>
+        <ExportButton
+          filters={filters}
+          filename={`historico_acessos_${new Date().toISOString().slice(0, 10)}.csv`}
+          onError={showToast}
+        />
+      </div>
+
+      <div className="table-container-card">
         {loading ? (
-          <p style={{ textAlign: "center", padding: "2rem" }}>Carregando histórico...</p>
+          <div className="table-loading">
+            <div className="spinner"></div>
+            <p>Carregando histórico...</p>
+          </div>
         ) : (
           <table className="alunos-table">
             <thead>
@@ -75,12 +137,14 @@ export default function AcessosManager({ showToast }) {
               </tr>
             </thead>
             <tbody>
-              {todosAcessos.length === 0 ? (
+              {paginatedAcessos.length === 0 ? (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: "center" }}>Nenhum acesso registrado.</td>
+                  <td colSpan="5" style={{ textAlign: "center", padding: "2rem", color: "#64748b" }}>
+                    Nenhum acesso registrado com os filtros selecionados.
+                  </td>
                 </tr>
               ) : (
-                todosAcessos.map((acesso) => (
+                paginatedAcessos.map((acesso) => (
                   <tr key={acesso.id}>
                     <td>
                       <div className="aluno-info">
@@ -92,12 +156,12 @@ export default function AcessosManager({ showToast }) {
                       </div>
                     </td>
                     <td>
-                      <span className="turma-badge">{acesso.aluno.turma?.nome}</span>
+                      <span className="turma-badge">{acesso.aluno.turma?.nome || "Sem Turma"}</span>
                     </td>
                     <td>
                       {editingId === acesso.id ? (
                         <select
-                          className="form-input"
+                          className="form-input-table"
                           value={editForm.tipo}
                           onChange={(e) => setEditForm({ ...editForm, tipo: e.target.value })}
                         >
@@ -114,7 +178,7 @@ export default function AcessosManager({ showToast }) {
                       {editingId === acesso.id ? (
                         <input
                           type="datetime-local"
-                          className="form-input"
+                          className="form-input-table"
                           value={editForm.horario}
                           onChange={(e) => setEditForm({ ...editForm, horario: e.target.value })}
                         />
@@ -126,7 +190,7 @@ export default function AcessosManager({ showToast }) {
                       {editingId === acesso.id ? (
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                           <button className="btn btn-save" onClick={() => handleSave(acesso.id)}>Salvar</button>
-                          <button className="btn btn-cancel" onClick={() => setEditingId(null)}>Cancelar</button>
+                          <button className="btn btn-cancel" onClick={() => setEditingId(null)}>Voltar</button>
                         </div>
                       ) : (
                         <div className="action-buttons">
@@ -147,6 +211,28 @@ export default function AcessosManager({ showToast }) {
         )}
       </div>
 
+      {totalPages > 1 && (
+        <div className="pagination-bar">
+          <button
+            className="pagination-btn"
+            disabled={page === 1 || loading}
+            onClick={() => setPage(p => Math.max(p - 1, 1))}
+          >
+            <FaChevronLeft /> Anterior
+          </button>
+          <span className="pagination-info">
+            Página <strong>{page}</strong> de <strong>{totalPages}</strong>
+          </span>
+          <button
+            className="pagination-btn"
+            disabled={page === totalPages || loading}
+            onClick={() => setPage(p => Math.min(p + 1, totalPages))}
+          >
+            Próximo <FaChevronRight />
+          </button>
+        </div>
+      )}
+
       {deleteTarget && (
         <DeleteConfirmModal
           target={deleteTarget}
@@ -156,6 +242,6 @@ export default function AcessosManager({ showToast }) {
           type="acesso"
         />
       )}
-    </section>
+    </div>
   );
 }
