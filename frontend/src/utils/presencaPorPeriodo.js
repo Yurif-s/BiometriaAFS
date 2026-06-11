@@ -9,11 +9,24 @@ export function toMin(h) {
 
 // Calcula períodos faltados
 export function calcularTempos(entrada, saida, aulas = HORARIOS_AULAS) {
-  const ent = toMin(entrada);
-  const sai = toMin(saida);
+  return entrada
+    ? calcularTemposPorIntervalos([{ entrada, saida }], aulas)
+    : aulas.map(aula => aula.periodo);
+}
 
-  // Sem horários = falta em todos
-  if (ent === null && sai === null) {
+export function calcularTemposPorIntervalos(intervalos, aulas = HORARIOS_AULAS) {
+  if (!intervalos.length) {
+    return aulas.map(aula => aula.periodo);
+  }
+
+  const intervalosMin = intervalos
+    .map((intervalo) => ({
+      entrada: toMin(intervalo.entrada),
+      saida: intervalo.saida ? toMin(intervalo.saida) : null,
+    }))
+    .filter((intervalo) => intervalo.entrada !== null);
+
+  if (!intervalosMin.length) {
     return aulas.map(aula => aula.periodo);
   }
 
@@ -22,8 +35,9 @@ export function calcularTempos(entrada, saida, aulas = HORARIOS_AULAS) {
     const ini = toMin(aula.inicio);
     const fim = toMin(aula.fim);
 
-    // Presença se houve interseção: entrada < fim da aula E (saída é nula ou saída > início da aula)
-    const presente = ent < fim && (sai === null || sai > ini);
+    const presente = intervalosMin.some(intervalo => (
+      intervalo.entrada < fim && (intervalo.saida === null || intervalo.saida > ini)
+    ));
 
     if (!presente) {
       tempos.push(aula.periodo);

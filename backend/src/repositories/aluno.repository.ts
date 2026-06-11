@@ -74,6 +74,27 @@ export class AlunoRepository implements IRepository<Aluno> {
     });
   }
 
+  async findPresentesSemSaidaDesde(inicio: Date): Promise<Aluno[]> {
+    return this.prisma.aluno.findMany({
+      where: {
+        entrada: {
+          gte: inicio,
+        },
+        OR: [
+          { saida: null },
+          {
+            saida: {
+              lt: this.prisma.aluno.fields.entrada,
+            },
+          },
+        ],
+      },
+      include: {
+        turma: true,
+      },
+    });
+  }
+
   async update(id: number, data: Partial<Aluno>): Promise<Aluno> {
     return this.prisma.aluno.update({
       where: { id },

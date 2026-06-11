@@ -3,6 +3,8 @@ import {
   BadRequestException,
   NotFoundException,
   ConflictException,
+  OnModuleDestroy,
+  OnModuleInit,
 } from '@nestjs/common';
 import { Aluno } from '@prisma/client';
 import { AlunoRepository } from '../repositories/aluno.repository';
@@ -13,10 +15,14 @@ import { BiometriaGateway } from '../gateways/biometria.gateway';
 import { AcessoRepository } from '../repositories/acesso.repository';
 
 @Injectable()
-export class AlunoService {
+export class AlunoService implements OnModuleInit, OnModuleDestroy {
+  private static readonly HORA_SAIDA_PADRAO = 16;
+  private static readonly MINUTO_SAIDA_PADRAO = 35;
+
   private pendingEnrollmentId: number | null = null;
   private pendingEnrollmentAcked = false;
   private pendingEnrollmentTime = 0;
+  private autoSaidaInterval: NodeJS.Timeout | null = null;
 
   private pendingDeletions: number[] = [];
   private reservedIds = new Map<number, number>(); // biometriaId -> timestamp
@@ -27,6 +33,98 @@ export class AlunoService {
     private readonly biometriaGateway: BiometriaGateway,
     private readonly acessoRepository: AcessoRepository,
   ) { }
+
+  onModuleInit() {
+    this.autoSaidaInterval = setInterval(() => {
+      void this.marcarSaidasPadraoSeNecessario();
+    }, 60_000);
+
+    void this.marcarSaidasPadraoSeNecessario();
+  }
+
+  onModuleDestroy() {
+    if (this.autoSaidaInterval) {
+      clearInterval(this.autoSaidaInterval);
+    }
+  }
+
+  private inicioDoDia(data: Date): Date {
+    const inicio = new Date(data);
+    inicio.setHours(0, 0, 0, 0);
+    return inicio;
+  }
+
+  private mesmoDia(a: Date | null, b: Date): boolean {
+    return !!a && a >= this.inicioDoDia(b);
+  }
+
+  private deveMarcarSaidaPadrao(agora: Date): boolean {
+    return agora >= this.saidaPadraoPara(agora);
+  }
+
+  private saidaPadraoPara(data: Date): Date {
+    const saidaPadrao = new Date(data);
+    saidaPadrao.setHours(
+      AlunoService.HORA_SAIDA_PADRAO,
+      AlunoService.MINUTO_SAIDA_PADRAO,
+      0,
+      0,
+    );
+
+    return saidaPadrao;
+  }
+
+  private ehSaidaPadrao(data: Date | null, referencia: Date): boolean {
+    return !!data && data.getTime() === this.saidaPadraoPara(referencia).getTime();
+  }
+
+  private async registrarAcesso(
+    alunoId: number,
+    tipo: 'Entrada' | 'Saída',
+    horario: Date,
+  ) {
+    await this.acessoRepository.create({
+      aluno_id: alunoId,
+      tipo,
+      horario,
+    });
+  }
+
+  private async atualizarOuCriarSaidaPadrao(
+    alunoId: number,
+    saidaPadrao: Date,
+    saidaReal: Date,
+  ) {
+    const acessoSaidaPadrao = await this.acessoRepository.findSaidaByAlunoHorario(
+      alunoId,
+      saidaPadrao,
+    );
+
+    if (acessoSaidaPadrao) {
+      await this.acessoRepository.update(acessoSaidaPadrao.id, {
+        horario: saidaReal,
+      });
+      return;
+    }
+
+    await this.registrarAcesso(alunoId, 'Saída', saidaReal);
+  }
+
+  async marcarSaidasPadraoSeNecessario(agora = new Date()): Promise<void> {
+    if (!this.deveMarcarSaidaPadrao(agora)) {
+      return;
+    }
+
+    const presentes = await this.alunoRepository.findPresentesSemSaidaDesde(
+      this.inicioDoDia(agora),
+    );
+    const saidaPadrao = this.saidaPadraoPara(agora);
+
+    for (const aluno of presentes) {
+      await this.alunoRepository.update(aluno.id, { saida: saidaPadrao });
+      await this.registrarAcesso(aluno.id, 'Saída', saidaPadrao);
+    }
+  }
 
   async iniciarCadastro(): Promise<{ id: number }> {
     const alunos = await this.alunoRepository.findAll();
@@ -129,23 +227,35 @@ export class AlunoService {
     const agora = new Date();
 
     if (aluno) {
-      if (!aluno.entrada) {
-        updatedAluno = await this.alunoRepository.update(aluno.id, { entrada: agora });
+      const entradaHoje = this.mesmoDia(aluno.entrada, agora);
+      const saidaPadrao = this.saidaPadraoPara(agora);
+      const saidaPadraoFutura = this.ehSaidaPadrao(aluno.saida, agora) && agora < saidaPadrao;
+      const saidaDepoisDaEntrada =
+        !!aluno.saida && !!aluno.entrada && aluno.saida > aluno.entrada;
+
+      if (!entradaHoje) {
+        const saida = agora < saidaPadrao ? saidaPadrao : null;
+        updatedAluno = await this.alunoRepository.update(aluno.id, { entrada: agora, saida });
         tipoAcesso = 'Entrada';
-      } else if (!aluno.saida) {
+        await this.registrarAcesso(aluno.id, 'Entrada', agora);
+
+        if (saida) {
+          await this.registrarAcesso(aluno.id, 'Saída', saida);
+        }
+      } else if (!saidaDepoisDaEntrada || saidaPadraoFutura) {
         updatedAluno = await this.alunoRepository.update(aluno.id, { saida: agora });
         tipoAcesso = 'Saída';
+        await this.atualizarOuCriarSaidaPadrao(aluno.id, saidaPadrao, agora);
       } else {
-        updatedAluno = await this.alunoRepository.update(aluno.id, { entrada: agora, saida: null });
+        const saida = agora < saidaPadrao ? saidaPadrao : null;
+        updatedAluno = await this.alunoRepository.update(aluno.id, { entrada: agora, saida });
         tipoAcesso = 'Entrada';
+        await this.registrarAcesso(aluno.id, 'Entrada', agora);
+
+        if (saida) {
+          await this.registrarAcesso(aluno.id, 'Saída', saida);
+        }
       }
-      
-      // Criar o registro na tabela de histórico
-      await this.acessoRepository.create({
-        aluno_id: aluno.id,
-        tipo: tipoAcesso,
-        horario: agora,
-      });
     }
 
     const turma = updatedAluno && updatedAluno.turma_id ? await this.turmaRepository.findById(updatedAluno.turma_id) : null;
