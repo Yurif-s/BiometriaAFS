@@ -47,11 +47,14 @@ O **BiometriaAFS** automatiza o ciclo completo da frequência escolar, minimizan
 
 ## ✨ Funcionalidades em Destaque
 
-- 🔒 **Controle de Acesso Biométrico**: Identificação rápida e precisa dos alunos.
+- 📊 **Dashboard Operacional Completo**: Painel com KPIs diários (presentes agora, ausentes hoje, total de alunos e slots biométricos).
+- 📈 **Gráficos Interativos**: Distribuição de acessos por hora do dia e divisão percentual de Entradas/Saídas (usando Recharts).
+- 📂 **Relatório por Período de Aula**: Grade de presença mapeando faltas nos 9 períodos de aula de cada aluno por turma.
+- 📑 **Histórico Paginado com Filtros e Exportação**: Consulta server-side paginada por data, turma, tipo e busca nominal, com suporte a exportação CSV.
 - 👥 **Gestão Completa de Turmas e Alunos**: CRUD intuitivo e ágil via interface web.
-- ⚡ **Comunicação em Tempo Real**: WebSocket (Socket.IO) integrado para feedback instantâneo no frontend no momento da leitura da digital.
+- ⚡ **Comunicação em Tempo Real**: WebSocket (Socket.IO) integrado para feedback instantâneo no frontend no momento da leitura da digital (feed ao vivo).
 - 🤖 **Automação Seduc-CE**: Preenchimento automatizado das faltas, poupando dezenas de minutos diários dos educadores.
-- 🛡️ **Testes e Confiabilidade**: Ampla cobertura de testes unitários no backend e validações rigorosas.
+- 🛡️ **Testes e Confiabilidade**: Cobertura de testes unitários no backend (incluindo cálculo de ausências por períodos) e validações rigorosas.
 
 ---
 
@@ -89,10 +92,14 @@ API REST construída em camadas (`Controllers → Services → Repositories`).
 - **Comunicação:** REST e WebSockets (Socket.IO).
 
 ### 🔵 Frontend (React + Vite)
-Interface web focada em usabilidade e performance.
-- **Funcionalidades:** Cadastro, edição via modal, exclusão segura, listagem e filtros.
-- **Destaque:** Tela de Terminal que recebe leituras do ESP32 via WebSockets e exibe a aprovação da presença com feedback visual/sonoro.
-- **Ferramentas:** `react-hot-toast` para notificações, `localStorage` para persistência.
+Interface web robusta organizada por rotas de navegação (`react-router-dom`) e gráficos dinâmicos (`recharts`).
+- **Rotas principais:**
+  - `/` - Terminal de acesso original (feedback sonoro/visual).
+  - `/dashboard` - Visão geral operacional (KPIs, gráficos por hora, donut, ranking de turmas e feed ao vivo via WebSockets).
+  - `/dashboard/historico` - Histórico avançado (busca, filtros por data e turma, edição inline e exportação CSV).
+  - `/dashboard/relatorios` - Controle de frequência escolar nos 9 períodos diários e gráfico de tendência.
+  - `/dashboard/gestao` - Painel de administração de alunos e gerenciador de turmas.
+  - `/portaria` - Tela da portaria/zelador.
 
 ### 🟡 Extensão Chrome (Manifest V3)
 Extensão "Faltosos Seduc" injetada na página do portal do professor.
@@ -195,6 +202,14 @@ pnpm run dev         # Interface disponível em http://localhost:5173
 - `POST /` - Registra novo acesso
 - `GET /` - Lista histórico completo
 - `GET /hoje` - Lista acessos do dia atual
+
+### 📊 Dashboard (`/dashboard`)
+- `GET /dashboard/resumo` - Retorna KPIs consolidados (presentes agora, ausentes, total de alunos/turmas, etc.)
+- `GET /dashboard/acessos/por-hora` - Agrupamento por hora das entradas e saídas
+- `GET /dashboard/tendencia` - Volume diário nos últimos N dias
+- `GET /dashboard/acessos` - Listagem paginada e filtrada (server-side)
+- `GET /dashboard/turmas/:id/frequencia` - Relatório diário de faltas nos 9 períodos escolares por aluno
+- `GET /dashboard/export` - Geração do arquivo CSV de acessos com os filtros selecionados
 
 ---
 

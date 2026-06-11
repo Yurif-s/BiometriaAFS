@@ -1,226 +1,65 @@
-// App.jsx — Versão 2: Terminal de Frequência + Painel Admin
+import React, { Suspense, lazy } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "./App.css";
-import { useState } from "react";
-import { FaUsers, FaArrowLeft } from "react-icons/fa";
 
-import Header from "./components/Header";
-import Footer from "./components/Footer";
-import StatusBanner from "./components/StatusBanner";
-import CadastroForm from "./components/CadastroForm";
-import AlunosTable from "./components/AlunosTable";
-import EditModal from "./components/EditModal";
-import DeleteConfirmModal from "./components/DeleteConfirmModal";
-import TurmasManager from "./components/TurmasManager";
 import Toast from "./components/Toast";
-import TerminalAcesso from "./components/TerminalAcesso";
-import Portaria from "./components/Portaria";
-
-import { useAlunos } from "./hooks/useAlunos";
-import { useTurmas } from "./hooks/useTurmas";
-import { useStatus } from "./hooks/useStatus";
+import Footer from "./components/Footer";
 import { useToast } from "./hooks/useToast";
 
-function App() {
-  // 'frequencia' = tela do terminal de acesso | 'admin' = painel administrativo | 'portaria' = tela do zelador
-  const normalizedPath = window.location.pathname.toLowerCase().replace(/\/+$/, '');
-  const initialViewMode = normalizedPath === '/portaria' || normalizedPath.startsWith('/portaria/') ? 'portaria' : 'frequencia';
-  const [viewMode, setViewMode] = useState(initialViewMode);
+const DashboardLayout = lazy(() => import("./components/dashboard/DashboardLayout"));
+const DashboardHome = lazy(() => import("./pages/DashboardHome"));
+const HistoricoPage = lazy(() => import("./pages/HistoricoPage"));
+const RelatoriosPage = lazy(() => import("./pages/RelatoriosPage"));
+const GestaoPage = lazy(() => import("./pages/GestaoPage"));
+const TerminalPage = lazy(() => import("./pages/TerminalPage"));
+const PortariaPage = lazy(() => import("./pages/PortariaPage"));
 
-  const { turmas, turmaOptions, addTurma, deleteTurma, updateTurma, turmaExists } = useTurmas();
-  const { alunos, addAluno, updateAluno, deleteAluno, matriculaExists } = useAlunos(turmaOptions);
-  const { statusMessage, showStatus, showMsg } = useStatus();
+function PageLoader() {
+  return (
+    <div className="page-loader" role="status" aria-live="polite">
+      <div className="spinner" />
+      <span>Carregando...</span>
+    </div>
+  );
+}
+
+function App() {
   const { toast, showToast, hideToast } = useToast();
 
-  // Edit
-  const [editingForm, setEditingForm] = useState(null);
-
-  const handleEditClick = (aluno) => setEditingForm({ ...aluno, turma_id: aluno.turma_id ?? aluno.turma?.id });
-  const handleEditChange = (field, value) =>
-    setEditingForm((prev) => ({ ...prev, [field]: value }));
-
-  const handleUpdate = async () => {
-    if (!editingForm.nome.trim() || !editingForm.matricula.trim() || (!editingForm.turma_id && !editingForm.turma?.id)) {
-      showMsg("Preencha nome, matrícula e turma para atualizar.", 3000);
-      return;
-    }
-    try {
-      await updateAluno(editingForm.id, {
-        nome: editingForm.nome.trim(),
-        matricula: editingForm.matricula.trim(),
-        biometria: Number(editingForm.biometria),
-        turma_id: Number(editingForm.turma_id ?? editingForm.turma?.id),
-      });
-      showToast("Dados salvos com sucesso!");
-      setEditingForm(null);
-    } catch (err) {
-      const msg = err.response?.data?.message ?? "Erro ao salvar alterações.";
-      showToast(msg, "error");
-    }
-  };
-
-  // Delete aluno
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-
-  const handleDeleteClick = (aluno) => {
-    setDeleteTarget(aluno);
-    setShowDeleteConfirm(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    setDeleteLoading(true);
-    try {
-      await deleteAluno(deleteTarget.id);
-      const nome = deleteTarget.nome;
-      showToast(`Aluno "${nome}" removido com sucesso.`);
-      setShowDeleteConfirm(false);
-      setDeleteTarget(null);
-    } catch (err) {
-      const msg = err.response?.data?.message ?? 'Erro ao remover aluno';
-      showToast(msg, 'error');
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    setDeleteTarget(null);
-    setShowDeleteConfirm(false);
-  };
-
-  // Cadastro
-  const handleCadastroSave = async (formData) => {
-    if (matriculaExists && matriculaExists(formData.matricula.trim())) {
-      showToast("Já existe um aluno com essa matrícula.", "error");
-      return false;
-    }
-    try {
-      await addAluno({
-        nome: formData.nome.trim(),
-        matricula: formData.matricula.trim(),
-        biometria: Number(formData.biometria),
-        turma_id: Number(formData.turma),
-      });
-      showToast(`Aluno "${formData.nome.trim()}" cadastrado com sucesso!`);
-      return true;
-    } catch (err) {
-      const msg = err.response?.data?.message ?? 'Erro ao cadastrar aluno';
-      showToast(msg, "error");
-      return false;
-    }
-  };
-
-  // Se for visão da portaria, renderiza apenas o componente da Portaria (sem header/footer)
-  if (viewMode === "portaria") {
-    return <Portaria />;
-  }
-
   return (
-    <div className="app">
-      <Header />
+    <BrowserRouter>
+      <div className="app">
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/" element={<TerminalPage showToast={showToast} />} />
+            <Route path="/portaria" element={<PortariaPage />} />
 
-      {/* ═══════════ TERMINAL DE FREQUÊNCIA ═══════════ */}
-      {viewMode === "frequencia" && (
-        <TerminalAcesso
-          onGoToCadastro={() => setViewMode("admin")}
-          onGoToAdmin={() => setViewMode("admin")}
-          showToast={showToast}
-        />
-      )}
+            <Route path="/dashboard" element={<DashboardLayout />}>
+              <Route index element={<DashboardHome showToast={showToast} />} />
+              <Route path="historico" element={<HistoricoPage showToast={showToast} />} />
+              <Route path="relatorios" element={<RelatoriosPage showToast={showToast} />} />
+              <Route path="gestao" element={<GestaoPage showToast={showToast} />} />
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Route>
 
-      {/* ═══════════ PAINEL ADMINISTRATIVO ═══════════ */}
-      {viewMode === "admin" && (
-        <main className="container">
-          {/* Botão voltar ao terminal */}
-          <button
-            className="back-to-terminal-btn"
-            onClick={() => setViewMode("frequencia")}
-          >
-            <FaArrowLeft /> Voltar ao Terminal
-          </button>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
 
-          <section className="top-section">
-            <div className="aluno-title">
-              <div className="circle-icon">
-                <FaUsers />
-              </div>
-              <div>
-                <h2>Alunos</h2>
-                <p>Cadastre, edite, visualize e remova alunos</p>
-              </div>
-            </div>
-            <div
-              className="novo-btn"
-              style={{ cursor: "pointer" }}
-              onClick={() =>
-                document.getElementById("lista-alunos")?.scrollIntoView({ behavior: "smooth" })
-              }
-            >
-              Alunos cadastrados: {alunos.length}
-            </div>
-          </section>
+        <Routes>
+          <Route path="/" element={<Footer />} />
+        </Routes>
 
-          {showStatus && <StatusBanner message={statusMessage} />}
-
-          {editingForm && (
-            <EditModal
-              editingForm={editingForm}
-              turmaOptions={turmaOptions}
-              onChange={handleEditChange}
-              onUpdate={handleUpdate}
-              onCancel={() => setEditingForm(null)}
-            />
-          )}
-
-          {showDeleteConfirm && (
-            <DeleteConfirmModal
-              target={deleteTarget}
-              loading={deleteLoading}
-              onConfirm={handleDeleteConfirm}
-              onCancel={handleDeleteCancel}
-              type="aluno"
-            />
-          )}
-
-          {/* TurmasManager recebe showToast para disparar após excluir turma */}
-          <TurmasManager
-            turmas={turmas}
-            onAdd={addTurma}
-            onUpdate={updateTurma}
-            onDelete={deleteTurma}
-            turmaExists={turmaExists}
-            showToast={showToast}
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            duration={toast.duration}
+            onClose={hideToast}
           />
-
-          <CadastroForm
-            turmaOptions={turmaOptions}
-            onSave={handleCadastroSave}
-            showStatus={showStatus}
-            statusMessage={statusMessage}
-            showToast={showToast}
-          />
-
-          <AlunosTable
-            alunos={alunos}
-            onEdit={handleEditClick}
-            onDelete={handleDeleteClick}
-          />
-        </main>
-      )}
-
-      <Footer />
-
-      {/* Toast global */}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          duration={toast.duration}
-          onClose={hideToast}
-        />
-      )}
-    </div>
+        )}
+      </div>
+    </BrowserRouter>
   );
 }
 
