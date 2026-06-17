@@ -123,4 +123,17 @@
   .filtros-grid .busca-item {
     grid-column: span 1;
   }
+
+  .filtros-acesso-form {
+    padding: 16px;
+  }
+
+  .filtros-actions {
+    justify-content: stretch;
+  }
+
+  .btn-clear-filtros {
+    width: 100%;
+    justify-content: center;
+  }
 }

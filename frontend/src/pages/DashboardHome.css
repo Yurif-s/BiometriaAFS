@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 32px;
+  min-width: 0;
 }
 
 /* KPI Grid */
@@ -91,5 +92,33 @@
 @media (max-width: 1200px) {
   .dashboard-widgets-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-home {
+    gap: 20px;
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .dashboard-widgets-grid {
+    gap: 20px;
+  }
+
+  .widgets-column-left,
+  .widgets-column-right {
+    gap: 20px;
+  }
+
+  .widget-card {
+    padding: 16px;
+  }
+
+  .chart-wrapper {
+    min-height: 240px;
   }
 }
