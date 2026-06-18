@@ -90,3 +90,11 @@
   border-radius: 3px;
   transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+
+@media (max-width: 640px) {
+  .card-header-ranking,
+  .ranking-list {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}

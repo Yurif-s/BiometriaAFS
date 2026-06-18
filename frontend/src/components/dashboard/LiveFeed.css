@@ -188,3 +188,20 @@
     transform: translateY(0);
   }
 }
+
+@media (max-width: 640px) {
+  .live-feed-card {
+    max-height: none;
+  }
+
+  .card-header-feed,
+  .feed-list {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .feed-item {
+    gap: 12px;
+    padding: 10px;
+  }
+}

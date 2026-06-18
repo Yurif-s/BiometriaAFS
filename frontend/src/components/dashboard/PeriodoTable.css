@@ -7,6 +7,17 @@
   width: 44px;
 }
 
+.table-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+
+.table-container .alunos-table {
+  min-width: 900px;
+}
+
 .period-cell {
   vertical-align: middle;
 }
