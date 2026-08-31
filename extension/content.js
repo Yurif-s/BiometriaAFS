@@ -130,7 +130,7 @@
         }
 
         const dados = await fetchApi(
-            `/alunos/turma/${encodeURIComponent(turmaId)}`
+            `/dashboard/turmas/${encodeURIComponent(turmaId)}/frequencia`
         );
 
         return carregarBaseJson(dados);
@@ -234,78 +234,6 @@
         return map;
     }
 
-    // Gera horários das aulas
-    function gerarAulas() {
-
-        const aulas = [];
-
-        function add(periodo, inicio, fim) {
-
-            aulas.push({
-                periodo,
-                inicio,
-                fim
-            });
-        }
-
-        add(1, "07:20", "08:10");
-        add(2, "08:10", "09:00");
-
-        add(3, "09:15", "10:05");
-        add(4, "10:05", "10:55");
-        add(5, "10:55", "11:45");
-
-        add(6, "13:00", "13:50");
-        add(7, "13:50", "14:40");
-
-        add(8, "14:55", "15:45");
-        add(9, "15:45", "16:35");
-
-        return aulas;
-    }
-
-    // Converte HH:MM para minutos
-    function toMin(h) {
-
-        if (!h) {
-            return null;
-        }
-
-        const [hh, mm] = h.split(":").map(Number);
-
-        return hh * 60 + mm;
-    }
-
-    // Calcula períodos faltados
-    function calcularTempos(entrada, saida, aulas) {
-
-        const ent = toMin(entrada);
-        const sai = toMin(saida);
-
-        // Sem horários = falta em todos
-        if (ent === null && sai === null) {
-
-            return aulas.map(aula => aula.periodo);
-        }
-
-        const tempos = [];
-
-        aulas.forEach(aula => {
-
-            const ini = toMin(aula.inicio);
-            const fim = toMin(aula.fim);
-
-            // Presença se houve interseção
-            const presente = ent < fim && sai > ini;
-
-            if (!presente) {
-                tempos.push(aula.periodo);
-            }
-        });
-
-        return tempos;
-    }
-
     // Retorna base atual
     async function carregarBase() {
 
@@ -362,18 +290,14 @@
             return;
         }
 
-        const aulas = gerarAulas();
         const temposAtivos = getTemposSelecionados();
 
+        // periodosAusentes já vem calculado pela API (/dashboard/turmas/:id/frequencia)
         const data = {
             nomes: base.map(aluno => ({
                 matricula: aluno.matricula,
                 nome: aluno.nome,
-                tempos: calcularTempos(
-                    aluno.entrada,
-                    aluno.saida,
-                    aulas
-                )
+                tempos: aluno.periodosAusentes || []
             }))
         };
 

@@ -30,9 +30,6 @@
       "dtos/*": [
         "./src/dtos/*"
       ],
-      "entities/*": [
-        "./src/entities/*"
-      ],
       "modules/*": [
         "./src/modules/*"
       ]
