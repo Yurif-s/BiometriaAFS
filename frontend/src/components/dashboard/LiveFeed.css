@@ -32,7 +32,7 @@
 
 .feed-icon {
   font-size: 18px;
-  color: #009245;
+  color: var(--primary-color);
 }
 
 .feed-icon.pulsing {
@@ -95,7 +95,7 @@
 
 .feed-avatar.in {
   background-color: #e6f5ec;
-  color: #009245;
+  color: var(--primary-color);
 }
 
 .feed-avatar.out {
@@ -145,7 +145,7 @@
 }
 
 .badge-type.in {
-  background-color: #009245;
+  background-color: var(--primary-color);
   color: white;
 }
 

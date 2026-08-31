@@ -51,7 +51,7 @@ export default function Portaria() {
           </div>
         ) : (
           <div className="student-card pop-in">
-            <div className={`status-badge ${alunoInfo.tipo === 'Saída' ? 'badge-saida' : 'badge-entrada'}`}>
+            <div className={`status-badge-icon ${alunoInfo.tipo === 'Saída' ? 'badge-saida' : 'badge-entrada'}`}>
               {alunoInfo.tipo === 'Saída' ? <FaSignOutAlt /> : <FaSignInAlt />}
               {alunoInfo.tipo} Registrada
             </div>

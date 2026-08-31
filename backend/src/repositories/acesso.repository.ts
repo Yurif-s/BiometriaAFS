@@ -70,6 +70,21 @@ export class AcessoRepository {
     });
   }
 
+  async findByAlunoNoDia(alunoId: number, inicioDoDia: Date, fimDoDia: Date): Promise<Acesso[]> {
+    return this.prisma.acesso.findMany({
+      where: {
+        aluno_id: alunoId,
+        horario: {
+          gte: inicioDoDia,
+          lte: fimDoDia,
+        },
+      },
+      orderBy: {
+        horario: 'asc',
+      },
+    });
+  }
+
   async findById(id: number): Promise<Acesso | null> {
     return this.prisma.acesso.findUnique({
       where: { id },

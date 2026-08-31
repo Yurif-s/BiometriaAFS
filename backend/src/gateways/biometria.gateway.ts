@@ -4,23 +4,11 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server } from 'socket.io';
-
-const allowedOrigins = process.env.FRONTEND_URL
-  ? process.env.FRONTEND_URL.split(',').map((url) => url.trim())
-  : ['http://localhost:5173'];
-
-const vercelUrlWithHyphen = 'https://biometria-afs.vercel.app';
-const vercelUrlNoHyphen = 'https://biometriaafs.vercel.app';
-if (!allowedOrigins.includes(vercelUrlWithHyphen)) {
-  allowedOrigins.push(vercelUrlWithHyphen);
-}
-if (!allowedOrigins.includes(vercelUrlNoHyphen)) {
-  allowedOrigins.push(vercelUrlNoHyphen);
-}
+import { corsOriginValidator } from '../config/cors.config';
 
 @WebSocketGateway({
   cors: {
-    origin: allowedOrigins,
+    origin: corsOriginValidator,
     credentials: true,
   },
 })
@@ -36,6 +24,8 @@ export class BiometriaGateway {
     alunoTurma?: string,
     entrada?: Date | null,
     saida?: Date | null,
+    tipoAcesso?: 'Entrada' | 'Saída',
+    horarioAcesso?: Date,
   ) {
     this.server.emit('biometria-lida', {
       biometriaId,
@@ -44,6 +34,8 @@ export class BiometriaGateway {
       alunoTurma,
       entrada,
       saida,
+      tipoAcesso,
+      horarioAcesso,
     });
   }
 

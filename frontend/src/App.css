@@ -1,5 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
+:root {
+  --color-primary: #009245;
+  --color-danger: #ff4b4b;
+  --color-warning: #ff9800;
+}
+
 *{
   margin:0;
   padding:0;
@@ -30,7 +36,7 @@ body{
 
   padding:0 60px;
 
-  border-bottom:3px solid #009245;
+  border-bottom:3px solid var(--color-primary);
 }
 
 .logo{
@@ -49,7 +55,7 @@ body{
   width:52px;
   height:52px;
 
-  background:#009245;
+  background:var(--color-primary);
 
   border-radius:14px;
 
@@ -66,7 +72,7 @@ body{
 }
 
 .title-area h1{
-  color:#009245;
+  color:var(--color-primary);
   font-size:28px;
   font-weight:600;
 }
@@ -98,7 +104,7 @@ body{
   width:76px;
   height:76px;
 
-  background:#009245;
+  background:var(--color-primary);
 
   border-radius:50%;
 
@@ -115,7 +121,7 @@ body{
 }
 
 .aluno-title h2{
-  color:#009245;
+  color:var(--color-primary);
   font-size:58px;
   font-weight:700;
   line-height:1;
@@ -128,7 +134,7 @@ body{
 }
 
 .novo-btn{
-  background:#ff9800;
+  background:var(--color-warning);
   color:white;
 
   border:none;
@@ -230,17 +236,17 @@ body{
 .input-group input:focus,
 .input-group select:focus{
   outline:none;
-  border-color:#009245;
+  border-color:var(--color-primary);
   box-shadow:0 0 0 4px rgba(0,146,69,0.08);
 }
 
 .input-error{
-  border-color:#ff4b4b !important;
+  border-color:var(--color-danger) !important;
   box-shadow:0 0 0 6px rgba(255,75,75,0.06) !important;
 }
 
 .error-msg{
-  color:#ff4b4b;
+  color:var(--color-danger);
   font-size:13px;
   margin-top:8px;
   font-weight:600;
@@ -276,11 +282,11 @@ body{
   width:100%;
   height:6px;
   border-radius:6px;
-  background:linear-gradient(90deg, #009245 0%, #6fcf97 100%);
+  background:linear-gradient(90deg, var(--color-primary) 0%, #6fcf97 100%);
 }
 
 .salvar{
-  background:#009245;
+  background:var(--color-primary);
   color:white;
 
   border:none;
@@ -350,7 +356,7 @@ th{
 
   padding:18px 16px;
 
-  color:#009245;
+  color:var(--color-primary);
 
   font-size:17px;
   font-weight:600;
@@ -408,15 +414,15 @@ tbody tr:hover{
 }
 
 .excluir{
-  border:1px solid #ff4b4b;
+  border:1px solid var(--color-danger);
 }
 
 .excluir svg{
-  color:#ff4b4b;
+  color:var(--color-danger);
 }
 
 .excluir:hover{
-  background:#ff4b4b;
+  background:var(--color-danger);
 }
 
 .excluir:hover svg{
@@ -452,7 +458,7 @@ tbody tr:hover{
   display:flex;
   justify-content:center;
   align-items:center;
-  color:#009245;
+  color:var(--color-primary);
   font-size:64px;
   box-shadow:0 24px 60px rgba(0,146,69,0.12);
   transition:transform .25s ease, box-shadow .25s ease;
@@ -509,7 +515,7 @@ tbody tr:hover{
   width:100%;
   height:72px;
 
-  background:#009245;
+  background:var(--color-primary);
 
   display:flex;
   justify-content:center;
@@ -552,7 +558,7 @@ tbody tr:hover{
 }
 
 .search-icon{
-  color:#009245;
+  color:var(--color-primary);
   font-size:18px;
 
   margin-right:12px;
@@ -625,7 +631,7 @@ tbody tr:hover{
 }
 
 .confirm-yes.salvar {
-  background: #ff4b4b;
+  background: var(--color-danger);
   box-shadow: 0 10px 20px rgba(255, 75, 75, 0.25);
 }
 
@@ -634,9 +640,9 @@ tbody tr:hover{
 }
 
 .confirm-no{
-  background:#ff4b4b;
+  background:var(--color-danger);
   color:white;
-  border:1px solid #ff4b4b;
+  border:1px solid var(--color-danger);
 }
 
 .loading-delete{
@@ -702,9 +708,9 @@ tbody tr:hover{
 
   background:linear-gradient(
     90deg,
-    #009245,
+    var(--color-primary),
     #00c85f,
-    #009245
+    var(--color-primary)
   );
 
   background-size:200%;
@@ -837,8 +843,8 @@ tbody tr:hover{
   gap:10px;
 
   background:none;
-  border:2px solid #009245;
-  color:#009245;
+  border:2px solid var(--color-primary);
+  color:var(--color-primary);
 
   padding:12px 22px;
   border-radius:12px;
@@ -853,7 +859,7 @@ tbody tr:hover{
 }
 
 .back-to-terminal-btn:hover{
-  background:#009245;
+  background:var(--color-primary);
   color:white;
   transform:translateY(-1px);
   box-shadow:0 6px 16px rgba(0,146,69,0.25);
@@ -875,7 +881,7 @@ tbody tr:hover{
 }
 
 .terminal-logo h2{
-  color:#009245;
+  color:var(--color-primary);
   font-size:32px;
   font-weight:700;
   line-height:1.1;
@@ -897,7 +903,7 @@ tbody tr:hover{
   align-items:center;
   gap:8px;
 
-  background:#009245;
+  background:var(--color-primary);
   color:white;
 
   border:none;
@@ -1012,7 +1018,7 @@ tbody tr:hover{
 }
 
 .fg-icon.idle{
-  color:#009245;
+  color:var(--color-primary);
 }
 
 @keyframes terminalPulse{
@@ -1045,17 +1051,17 @@ tbody tr:hover{
 /* Estado ERROR */
 .fingerprint-container.error-glow{
   background:linear-gradient(135deg, rgba(255,75,75,0.08), rgba(255,75,75,0.02));
-  border:2px solid #ff4b4b;
+  border:2px solid var(--color-danger);
   box-shadow:0 0 20px rgba(255,75,75,0.2);
   animation:errorShake .5s ease;
 }
 
 .fg-icon.error{
-  color:#ff4b4b;
+  color:var(--color-danger);
 }
 
 .error-text{
-  color:#ff4b4b !important;
+  color:var(--color-danger) !important;
 }
 
 @keyframes errorShake{
@@ -1069,16 +1075,16 @@ tbody tr:hover{
 /* Estado PROMPT-CADASTRO */
 .fingerprint-container.prompt-glow{
   background:linear-gradient(135deg, rgba(255,152,0,0.1), rgba(255,152,0,0.02));
-  border:2px solid #ff9800;
+  border:2px solid var(--color-warning);
   box-shadow:0 0 24px rgba(255,152,0,0.2);
 }
 
 .fg-icon.prompt{
-  color:#ff9800;
+  color:var(--color-warning);
 }
 
 .prompt-text{
-  color:#ff9800 !important;
+  color:var(--color-warning) !important;
   font-size:22px;
 }
 
@@ -1097,7 +1103,7 @@ tbody tr:hover{
   align-items:center;
   gap:8px;
 
-  background:#ff9800;
+  background:var(--color-warning);
   color:white;
   border:none;
 
@@ -1123,7 +1129,7 @@ tbody tr:hover{
 .warning-badge{
   display:inline-block;
   background:rgba(255,75,75,0.08);
-  color:#ff4b4b;
+  color:var(--color-danger);
   padding:6px 16px;
   border-radius:8px;
   font-size:13px;
@@ -1174,7 +1180,7 @@ tbody tr:hover{
   align-items:center;
   gap:12px;
   margin-bottom:22px;
-  color:#009245;
+  color:var(--color-primary);
 }
 
 .history-header svg{
@@ -1224,7 +1230,7 @@ tbody tr:hover{
   height:42px;
   border-radius:50%;
 
-  background:#009245;
+  background:var(--color-primary);
   color:white;
 
   display:flex;
@@ -1237,7 +1243,7 @@ tbody tr:hover{
 }
 
 .history-item.saída .history-avatar{
-  background:#ff9800;
+  background:var(--color-warning);
 }
 
 .history-info{
@@ -1280,12 +1286,12 @@ tbody tr:hover{
   font-size:11px;
   font-weight:700;
   text-transform:uppercase;
-  color:#009245;
+  color:var(--color-primary);
   letter-spacing:0.5px;
 }
 
 .history-item.saída .history-time-badge .type{
-  color:#ff9800;
+  color:var(--color-warning);
 }
 
 /* Filtro de data do histórico */
@@ -1323,7 +1329,7 @@ tbody tr:hover{
 }
 
 .history-date-input:focus {
-  border-color: #009245;
+  border-color: var(--color-primary);
 }
 
 .history-clear-btn {
@@ -1520,7 +1526,7 @@ tbody tr:hover{
   to { opacity: 1; }
 }
 
-.status-badge {
+.status-badge-icon {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1707,11 +1713,11 @@ tbody tr:hover{
 }
 
 .toast-box.success {
-  border-left: 4px solid #009245;
+  border-left: 4px solid var(--color-primary);
 }
 
 .toast-box.error {
-  border-left: 4px solid #ff4b4b;
+  border-left: 4px solid var(--color-danger);
 }
 
 .toast-icon {
@@ -1720,11 +1726,11 @@ tbody tr:hover{
 }
 
 .toast-icon.success {
-  color: #009245;
+  color: var(--color-primary);
 }
 
 .toast-icon.error {
-  color: #ff4b4b;
+  color: var(--color-danger);
 }
 
 .toast-text {
@@ -1770,11 +1776,11 @@ tbody tr:hover{
 }
 
 .toast-progress-bar.success {
-  background: #009245;
+  background: var(--color-primary);
 }
 
 .toast-progress-bar.error {
-  background: #ff4b4b;
+  background: var(--color-danger);
 }
 
 @media (max-width: 480px) {
@@ -1837,7 +1843,7 @@ tbody tr:hover{
   display: flex;
   justify-content: center;
   align-items: center;
-  color: #ff4b4b;
+  color: var(--color-danger);
   font-size: 20px;
   flex-shrink: 0;
 }

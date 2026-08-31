@@ -54,17 +54,18 @@ export default function TerminalAcesso({ onGoToCadastro, onGoToAdmin, showToast 
     // Se estiver em modo de prompt, ignora ou reseta
     if (status === "prompt-cadastro") return;
 
-    const { alunoNome, alunoMatricula, alunoTurma, entrada, saida } = data;
+    const { alunoNome, alunoMatricula, alunoTurma, tipoAcesso, horarioAcesso: horarioEvento } = data;
 
     if (alunoNome) {
-      const horarioAcesso = saida || entrada || new Date().toISOString();
+      const tipo = tipoAcesso || "Entrada";
+      const horarioAcesso = horarioEvento || new Date().toISOString();
 
       // Aluno reconhecido
       setAlunoInfo({
         nome: alunoNome,
         matricula: alunoMatricula,
         turma: alunoTurma,
-        tipo: saida ? "Saída" : "Entrada",
+        tipo,
         horario: new Date(horarioAcesso).toLocaleTimeString(),
       });
       setStatus("success");
@@ -73,7 +74,7 @@ export default function TerminalAcesso({ onGoToCadastro, onGoToAdmin, showToast 
       // Adiciona na lista geral de acessos
       const novoAcesso = {
         id: data.acessoId || Date.now(),
-        tipo: saida ? "Saída" : "Entrada",
+        tipo,
         horario: horarioAcesso,
         aluno: {
           nome: alunoNome,

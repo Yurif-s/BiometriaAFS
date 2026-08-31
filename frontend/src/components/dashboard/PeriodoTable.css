@@ -34,7 +34,7 @@
 
 .period-dot.present {
   background-color: #e6f5ec;
-  color: #009245;
+  color: var(--primary-color);
 }
 
 .period-dot.absent {
