@@ -78,7 +78,7 @@ describe('AlunoService', () => {
   describe('registrarLeitura', () => {
     it('deve registrar leitura de um aluno cadastrado e emitir evento', async () => {
       jest.useFakeTimers().setSystemTime(new Date('2026-06-11T07:20:00'));
-      const alunoMock = { id: 1, nome: 'João', biometria: 123, entrada: null, saida: null, turma_id: 1 } as any;
+      const alunoMock = { id: 1, nome: 'João', biometria: 123, entrada: null, saida: null, turma_id: 1, turma: { id: 1, nome: 'Turma A' } } as any;
       const updatedAlunoMock = {
         ...alunoMock,
         entrada: new Date('2026-06-11T07:20:00'),
@@ -86,7 +86,6 @@ describe('AlunoService', () => {
       };
       alunoRepository.findByBiometria.mockResolvedValue(alunoMock);
       alunoRepository.update.mockResolvedValue(updatedAlunoMock);
-      turmaRepository.findById.mockResolvedValue({ id: 1, nome: 'Turma A' } as any);
 
       const result = await service.registrarLeitura(123);
 
@@ -98,7 +97,9 @@ describe('AlunoService', () => {
         undefined,
         'Turma A',
         expect.any(Date),
-        new Date('2026-06-11T16:35:00')
+        new Date('2026-06-11T16:35:00'),
+        'Entrada',
+        new Date('2026-06-11T07:20:00')
       );
       expect(acessoRepository.create).toHaveBeenCalledWith({
         aluno_id: 1,
@@ -195,6 +196,8 @@ describe('AlunoService', () => {
       expect(alunoRepository.findByBiometria).toHaveBeenCalledWith(456);
       expect(biometriaGateway.emitirBiometriaLida).toHaveBeenCalledWith(
         456,
+        undefined,
+        undefined,
         undefined,
         undefined,
         undefined,

@@ -7,7 +7,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { Aluno } from '@prisma/client';
-import { AlunoRepository } from '../repositories/aluno.repository';
+import { AlunoRepository, AlunoComTurma } from '../repositories/aluno.repository';
 import { TurmaRepository } from '../repositories/turma.repository';
 import { CreateAlunoDto } from '../dtos/create-aluno.dto';
 import { UpdateAlunoDto } from '../dtos/update-aluno.dto';
@@ -219,11 +219,36 @@ export class AlunoService implements OnModuleInit, OnModuleDestroy {
     this.queueDeletion(id);
   }
 
+  /**
+   * Registra a Entrada do dia (e a Saída padrão prevista, se ainda não passou)
+   * em paralelo: são escritas independentes, não há motivo para serializar
+   * os round-trips ao banco no caminho crítico da leitura biométrica.
+   */
+  private async registrarEntrada(
+    alunoId: number,
+    agora: Date,
+    saidaPadrao: Date,
+  ): Promise<AlunoComTurma> {
+    const saida = agora < saidaPadrao ? saidaPadrao : null;
+
+    const acessosPendentes: Promise<void>[] = [this.registrarAcesso(alunoId, 'Entrada', agora)];
+    if (saida) {
+      acessosPendentes.push(this.registrarAcesso(alunoId, 'Saída', saida));
+    }
+
+    const [alunoAtualizado] = await Promise.all([
+      this.alunoRepository.update(alunoId, { entrada: agora, saida }),
+      ...acessosPendentes,
+    ]);
+
+    return alunoAtualizado;
+  }
+
   async registrarLeitura(biometria: number) {
     const aluno = await this.alunoRepository.findByBiometria(biometria);
 
     let updatedAluno = aluno;
-    let tipoAcesso = 'Entrada';
+    let tipoAcesso: 'Entrada' | 'Saída' = 'Entrada';
     const agora = new Date();
 
     if (aluno) {
@@ -234,40 +259,35 @@ export class AlunoService implements OnModuleInit, OnModuleDestroy {
         !!aluno.saida && !!aluno.entrada && aluno.saida > aluno.entrada;
 
       if (!entradaHoje) {
-        const saida = agora < saidaPadrao ? saidaPadrao : null;
-        updatedAluno = await this.alunoRepository.update(aluno.id, { entrada: agora, saida });
+        updatedAluno = await this.registrarEntrada(aluno.id, agora, saidaPadrao);
         tipoAcesso = 'Entrada';
-        await this.registrarAcesso(aluno.id, 'Entrada', agora);
-
-        if (saida) {
-          await this.registrarAcesso(aluno.id, 'Saída', saida);
-        }
       } else if (!saidaDepoisDaEntrada || saidaPadraoFutura) {
-        updatedAluno = await this.alunoRepository.update(aluno.id, { saida: agora });
+        const [alunoAtualizado] = await Promise.all([
+          this.alunoRepository.update(aluno.id, { saida: agora }),
+          this.atualizarOuCriarSaidaPadrao(aluno.id, saidaPadrao, agora),
+        ]);
+        updatedAluno = alunoAtualizado;
         tipoAcesso = 'Saída';
-        await this.atualizarOuCriarSaidaPadrao(aluno.id, saidaPadrao, agora);
       } else {
-        const saida = agora < saidaPadrao ? saidaPadrao : null;
-        updatedAluno = await this.alunoRepository.update(aluno.id, { entrada: agora, saida });
+        updatedAluno = await this.registrarEntrada(aluno.id, agora, saidaPadrao);
         tipoAcesso = 'Entrada';
-        await this.registrarAcesso(aluno.id, 'Entrada', agora);
-
-        if (saida) {
-          await this.registrarAcesso(aluno.id, 'Saída', saida);
-        }
       }
     }
 
-    const turma = updatedAluno && updatedAluno.turma_id ? await this.turmaRepository.findById(updatedAluno.turma_id) : null;
+    // updatedAluno já vem com a turma incluída (ver AlunoRepository) — evita
+    // um segundo round-trip ao banco só para buscar o nome da turma.
+    const nomeTurma = updatedAluno?.turma?.nome;
 
     // Notifica o frontend via WebSocket independente de ter encontrado ou não
     this.biometriaGateway.emitirBiometriaLida(
       biometria,
       updatedAluno?.nome,
       updatedAluno?.matricula,
-      turma?.nome,
+      nomeTurma,
       updatedAluno?.entrada,
-      updatedAluno?.saida
+      updatedAluno?.saida,
+      aluno ? tipoAcesso : undefined,
+      aluno ? agora : undefined,
     );
 
     return { encontrado: !!aluno, aluno: updatedAluno ?? undefined };

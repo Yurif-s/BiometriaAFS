@@ -24,6 +24,8 @@ export class BiometriaGateway {
     alunoTurma?: string,
     entrada?: Date | null,
     saida?: Date | null,
+    tipoAcesso?: 'Entrada' | 'Saída',
+    horarioAcesso?: Date,
   ) {
     this.server.emit('biometria-lida', {
       biometriaId,
@@ -32,6 +34,8 @@ export class BiometriaGateway {
       alunoTurma,
       entrada,
       saida,
+      tipoAcesso,
+      horarioAcesso,
     });
   }
 

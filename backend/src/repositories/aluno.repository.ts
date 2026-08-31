@@ -10,6 +10,8 @@ export interface IRepository<T> {
   delete(id: number): Promise<void>;
 }
 
+export type AlunoComTurma = Prisma.AlunoGetPayload<{ include: { turma: true } }>;
+
 @Injectable()
 export class AlunoRepository implements IRepository<Aluno> {
   constructor(private readonly prisma: PrismaService) {}
@@ -56,7 +58,7 @@ export class AlunoRepository implements IRepository<Aluno> {
     });
   }
 
-  async findByBiometria(biometria: number): Promise<Aluno | null> {
+  async findByBiometria(biometria: number): Promise<AlunoComTurma | null> {
     return this.prisma.aluno.findFirst({
       where: { biometria },
       include: {
@@ -95,7 +97,7 @@ export class AlunoRepository implements IRepository<Aluno> {
     });
   }
 
-  async update(id: number, data: Partial<Aluno>): Promise<Aluno> {
+  async update(id: number, data: Partial<Aluno>): Promise<AlunoComTurma> {
     return this.prisma.aluno.update({
       where: { id },
       data: {
