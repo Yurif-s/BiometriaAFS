@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { FaCheckCircle, FaUser, FaIdBadge, FaDoorOpen, FaClock, FaSignOutAlt, FaSignInAlt, FaFingerprint } from 'react-icons/fa';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { horarioBR } from '../utils/datas';
+import { Link } from 'react-router-dom';
+import ConnectionStatus from './ConnectionStatus';
+import './Portaria.css';
 
 export default function Portaria() {
   const [alunoInfo, setAlunoInfo] = useState(null);
@@ -24,7 +27,7 @@ export default function Portaria() {
   // Ignorar falhas na portaria, o zelador só precisa ver quem passou
   const handleBiometriaFalha = () => {};
 
-  useWebSocket(handleBiometriaLida, handleBiometriaFalha);
+  const connection = useWebSocket(handleBiometriaLida, handleBiometriaFalha);
 
   const handleConfirmar = () => {
     // Animação de saída antes de limpar o estado poderia ser feita aqui
@@ -34,11 +37,11 @@ export default function Portaria() {
   return (
     <div className="portaria-container">
       <div className="portaria-header">
-        <div className="logo-text">Portaria <span>App</span></div>
-        <div className="status-indicator">
-          <div className="dot pulse-green"></div>
-          Online
+        <div className="portaria-brand">
+          <Link to="/" className="logo-text">Biometria <span>AFS</span></Link>
+          <span className="portaria-label">Portaria</span>
         </div>
+        <ConnectionStatus connection={connection} />
       </div>
 
       <div className="portaria-content">
@@ -47,8 +50,9 @@ export default function Portaria() {
             <div className="icon-wrapper glass-icon">
               <FaFingerprint />
             </div>
-            <h2>Aguardando Liberação...</h2>
+            <h2>Acompanhamento de acessos</h2>
             <p>Os dados do aluno aparecerão aqui assim que a digital for reconhecida no terminal.</p>
+            <Link className="portaria-back" to="/">Voltar ao terminal</Link>
           </div>
         ) : (
           <div className="student-card pop-in">

@@ -205,3 +205,4 @@
     padding: 10px;
   }
 }
+.live-badge.feed-offline { background: #f1f3f2; color: #586a61; animation: none; }

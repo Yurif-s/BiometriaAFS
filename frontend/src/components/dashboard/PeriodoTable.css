@@ -47,3 +47,5 @@
   color: #ea580c;
   border: 1px solid #ffd8b3;
 }
+
+.period-table th:first-child, .period-table td:first-child { min-width: 220px; }

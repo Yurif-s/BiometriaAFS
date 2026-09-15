@@ -6,6 +6,8 @@ import ExportButton from "../components/dashboard/ExportButton";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
 import "./HistoricoPage.css";
 import { dataBR, dataHoraBR, paraInputDataHora, deInputDataHora } from "../utils/datas";
+import PageHeader from '../components/PageHeader';
+import Feedback from '../components/Feedback';
 
 export default function HistoricoPage({ showToast }) {
   const {
@@ -93,12 +95,7 @@ export default function HistoricoPage({ showToast }) {
 
   return (
     <div className="historico-page">
-      <div className="historico-header">
-        <div className="title-with-icon">
-          <FaHistory className="page-icon" />
-          <h2>Histórico de Acessos</h2>
-        </div>
-      </div>
+      <PageHeader icon={FaHistory} title="Histórico de acessos" description="Consulte os registros de entrada e saída da escola." />
 
       <FiltrosAcesso onFilter={handleFilter} onClear={handleClear} />
 
@@ -114,8 +111,11 @@ export default function HistoricoPage({ showToast }) {
       </div>
 
       <div className="table-container-card">
-        {error && <p role="alert">Não foi possível carregar o histórico. Confira o intervalo de datas e tente novamente.</p>}
-        {loading ? (
+        {error && !loading ? (
+          <Feedback error title="Não foi possível carregar o histórico" onRetry={() => fetchAcessosFiltrados({ ...filters, page, limit })}>
+            Confira sua conexão e o intervalo de datas. Você pode tentar a consulta novamente.
+          </Feedback>
+        ) : loading ? (
           <div className="table-loading">
             <div className="spinner"></div>
             <p>Carregando histórico...</p>
@@ -134,8 +134,8 @@ export default function HistoricoPage({ showToast }) {
             <tbody>
               {paginatedAcessos.length === 0 ? (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: "center", padding: "2rem", color: "#64748b" }}>
-                    Nenhum acesso registrado com os filtros selecionados.
+                  <td colSpan="5">
+                    <Feedback title="Nenhum acesso encontrado">Os registros aparecerão aqui. Se aplicou filtros, tente outro período ou turma.</Feedback>
                   </td>
                 </tr>
               ) : (

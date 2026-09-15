@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FaSearch, FaPen, FaTrash, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import Feedback from './Feedback';
 
 export default function AlunosTable({ alunos, onEdit, onDelete }) {
   const [pesquisa, setPesquisa] = useState("");
@@ -36,7 +37,9 @@ export default function AlunosTable({ alunos, onEdit, onDelete }) {
 
       <h3>Lista de Alunos ({filtered.length})</h3>
 
-      <table>
+      {filtered.length === 0 ? <Feedback title={pesquisa ? 'Nenhum aluno encontrado' : 'Nenhum aluno cadastrado'}>
+        {pesquisa ? 'Tente pesquisar por outro nome ou matrícula.' : 'Use o formulário acima para adicionar o primeiro aluno.'}
+      </Feedback> : <div className="table-scroll"><table>
         <caption className="sr-only">Lista de alunos cadastrados</caption>
         <thead>
           <tr>
@@ -75,7 +78,7 @@ export default function AlunosTable({ alunos, onEdit, onDelete }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>}
 
       {totalPages > 1 && (
         <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem' }}>

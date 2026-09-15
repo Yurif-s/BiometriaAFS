@@ -36,7 +36,7 @@ export default function LiveFeed() {
     setFeed((prev) => [novoAcesso, ...prev.slice(0, 9)]);
   };
 
-  useWebSocket(handleLiveAccess, () => {
+  const connection = useWebSocket(handleLiveAccess, () => {
     // Opcionalmente podemos tratar falhas
   });
 
@@ -47,7 +47,7 @@ export default function LiveFeed() {
           <FaBroadcastTower className="feed-icon pulsing" />
           <h3>Atividade Recente</h3>
         </div>
-        <span className="live-badge">Ao Vivo</span>
+        <span className={`live-badge ${connection !== 'connected' ? 'feed-offline' : ''}`}>{connection === 'connected' ? 'Ao vivo' : 'Sem conexão'}</span>
       </div>
 
       <div className="feed-list">

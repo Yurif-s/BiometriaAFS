@@ -4,12 +4,16 @@ import * as api from '../services/api';
 export function useAlunos() {
   const [alunos, setAlunos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const fetchAlunos = useCallback(async () => {
+    setLoading(true);
     try {
       const data = await api.getAlunos();
       setAlunos(data);
+      setError(null);
     } catch (err) {
+      setError(err);
       console.error("Erro ao buscar alunos:", err);
     } finally {
       setLoading(false);
@@ -40,5 +44,5 @@ export function useAlunos() {
     );
   }, [alunos]);
 
-  return { alunos, loading, addAluno, updateAluno, deleteAluno, matriculaExists, refetch: fetchAlunos };
+  return { alunos, loading, error, addAluno, updateAluno, deleteAluno, matriculaExists, refetch: fetchAlunos };
 }

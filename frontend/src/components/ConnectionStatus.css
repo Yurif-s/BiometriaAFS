@@ -1,0 +1,15 @@
+.connection-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  border-radius: 8px;
+  background: #f0f4f2;
+  color: #52635c;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.connection-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.connection-status.connected { color: #15653e; background: #e9f5ee; }
+.connection-status.disconnected { color: #8a4b12; background: #fff4e5; }

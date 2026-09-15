@@ -5,11 +5,16 @@ import * as api from '../services/api';
 export function useTurmas() {
   const [turmas, setTurmas] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const fetchTurmas = useCallback(async () => {
+    setLoading(true);
     try {
       const data = await api.getTurmas();
       setTurmas(data);
+      setError(null);
+    } catch (err) {
+      setError(err);
     } finally {
       setLoading(false);
     }
@@ -46,5 +51,5 @@ export function useTurmas() {
 
   const turmaOptions = turmas.map(t => ({ id: t.id, nome: t.nome }));
 
-  return { turmas, turmaOptions, loading, addTurma, updateTurma, deleteTurma, turmaExists };
+  return { turmas, turmaOptions, loading, error, refetch: fetchTurmas, addTurma, updateTurma, deleteTurma, turmaExists };
 }
