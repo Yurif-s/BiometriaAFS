@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { adicionarDiasBR, dataBR, horarioBR, horarioNoDiaBR, inicioDoDiaBR, validarData } from '../utils/datas';
 import { DashboardRepository } from '../repositories/dashboard.repository';
 import {
   HORARIOS_AULAS,
@@ -9,6 +10,24 @@ import {
 @Injectable()
 export class DashboardService {
   constructor(private readonly dashboardRepository: DashboardRepository) {}
+
+  private validarInteiro(value: number, campo: string, max = Number.MAX_SAFE_INTEGER) {
+    if (!Number.isSafeInteger(value) || value < 1 || value > max) {
+      throw new BadRequestException(`${campo} deve ser um inteiro entre 1 e ${max}.`);
+    }
+  }
+
+  private validarFiltros(params: { dataInicio?: string; dataFim?: string; turmaId?: number; tipo?: string }) {
+    if (params.dataInicio !== undefined) validarData(params.dataInicio);
+    if (params.dataFim !== undefined) validarData(params.dataFim);
+    if (params.dataInicio && params.dataFim && params.dataInicio > params.dataFim) {
+      throw new BadRequestException('Data inicial não pode ser posterior à data final.');
+    }
+    if (params.turmaId !== undefined) this.validarInteiro(params.turmaId, 'turmaId');
+    if (params.tipo !== undefined && !['Entrada', 'Saída'].includes(params.tipo)) {
+      throw new BadRequestException('Tipo deve ser Entrada ou Saída.');
+    }
+  }
 
   async getResumo(): Promise<{
     totalAlunos: number;
@@ -36,8 +55,9 @@ export class DashboardService {
   }
 
   async getAcessosPorHora(dataStr?: string) {
-    const data = dataStr ? new Date(dataStr) : new Date();
+    const data = inicioDoDiaBR(dataStr);
     const acessos = await this.dashboardRepository.findAcessosPorDia(data);
+    const agora = new Date();
 
     // Inicializar horas do dia (das 06h às 22h por padrão para o gráfico ficar elegante, ou 24h)
     const horasMap = new Map<number, { hora: string; entrada: number; saida: number; total: number }>();
@@ -51,7 +71,8 @@ export class DashboardService {
     }
 
     acessos.forEach(acesso => {
-      const hora = acesso.horario.getHours();
+      if (acesso.horario > agora) return;
+      const hora = Number(horarioBR(acesso.horario).slice(0, 2));
       if (horasMap.has(hora)) {
         const item = horasMap.get(hora)!;
         if (acesso.tipo === 'Entrada') {
@@ -67,6 +88,7 @@ export class DashboardService {
   }
 
   async getTendencia(dias: number = 7) {
+    this.validarInteiro(dias, 'dias', 365);
     const acessos = await this.dashboardRepository.findAcessosPeriodo(dias);
 
     // Inicializar os últimos N dias
@@ -74,11 +96,8 @@ export class DashboardService {
     const hoje = new Date();
     
     for (let i = dias - 1; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(hoje.getDate() - i);
-      const key = d.toISOString().slice(0, 10); // YYYY-MM-DD
-      const diaStr = String(d.getDate()).padStart(2, '0');
-      const mesStr = String(d.getMonth() + 1).padStart(2, '0');
+      const key = dataBR(adicionarDiasBR(hoje, -i));
+      const [, mesStr, diaStr] = key.split('-');
       
       tendenciaMap.set(key, {
         dataExibicao: `${diaStr}/${mesStr}`,
@@ -89,7 +108,7 @@ export class DashboardService {
     }
 
     acessos.forEach(acesso => {
-      const key = acesso.horario.toISOString().slice(0, 10);
+      const key = dataBR(acesso.horario);
       if (tendenciaMap.has(key)) {
         const item = tendenciaMap.get(key)!;
         if (acesso.tipo === 'Entrada') {
@@ -112,8 +131,14 @@ export class DashboardService {
     page?: number;
     limit?: number;
   }) {
-    const limitNum = params.limit ? Number(params.limit) : 10;
-    const pageNum = params.page ? Number(params.page) : 1;
+    this.validarFiltros(params);
+    const limitNum = params.limit ?? 10;
+    const pageNum = params.page ?? 1;
+    this.validarInteiro(limitNum, 'limit', 500);
+    this.validarInteiro(pageNum, 'page');
+    if (!Number.isSafeInteger((pageNum - 1) * limitNum)) {
+      throw new BadRequestException('Página fora do intervalo permitido.');
+    }
 
     const { data, total } = await this.dashboardRepository.findAcessosPaginados({
       ...params,
@@ -131,15 +156,12 @@ export class DashboardService {
   }
 
   async getFrequenciaTurma(turmaId: number, dataStr?: string) {
-    const data = dataStr ? new Date(dataStr) : new Date();
+    this.validarInteiro(turmaId, 'turmaId');
+    const data = inicioDoDiaBR(dataStr);
     const alunos = await this.dashboardRepository.findAlunosPorTurma(turmaId);
     const acessos = await this.dashboardRepository.findAcessosAlunosTurma(turmaId, data);
 
-    const helperFormatTime = (d: Date) => {
-      const hh = String(d.getHours()).padStart(2, '0');
-      const mm = String(d.getMinutes()).padStart(2, '0');
-      return `${hh}:${mm}`;
-    };
+    const helperFormatTime = horarioBR;
 
     const montarIntervalosPresenca = (acessosAluno: typeof acessos): IntervaloPresenca[] => {
       const intervalos: IntervaloPresenca[] = [];
@@ -147,7 +169,7 @@ export class DashboardService {
 
       acessosAluno.forEach(acesso => {
         if (acesso.tipo === 'Entrada') {
-          entradaAtual = acesso.horario;
+          entradaAtual ??= acesso.horario;
           return;
         }
 
@@ -186,13 +208,8 @@ export class DashboardService {
       if (intervalosPresenca.length > 0) {
         const ultimoIntervalo = intervalosPresenca[intervalosPresenca.length - 1];
         const saidaUltimoIntervalo = ultimoIntervalo.saida
-          ? new Date(data)
+          ? horarioNoDiaBR(data, `${ultimoIntervalo.saida}:00`)
           : null;
-
-        if (saidaUltimoIntervalo && ultimoIntervalo.saida) {
-          const [hh, mm] = ultimoIntervalo.saida.split(':').map(Number);
-          saidaUltimoIntervalo.setHours(hh, mm, 0, 0);
-        }
 
         status = !saidaUltimoIntervalo || saidaUltimoIntervalo > new Date()
           ? 'Presente'
@@ -218,6 +235,7 @@ export class DashboardService {
     tipo?: string;
     busca?: string;
   }): Promise<string> {
+    this.validarFiltros(params);
     // Busca TODOS os registros sem paginação
     const { data } = await this.dashboardRepository.findAcessosPaginados({
       ...params,
@@ -228,13 +246,13 @@ export class DashboardService {
     let csv = 'Aluno,Matrícula,Turma,Tipo de Acesso,Horário\n';
     
     data.forEach(a => {
-      const nome = a.aluno.nome.replace(/"/g, '""');
       const matricula = a.aluno.matricula;
       const turma = a.aluno.turma?.nome || 'Sem Turma';
       const tipo = a.tipo;
-      const horario = a.horario.toISOString().replace('T', ' ').slice(0, 19);
+      const horario = `${dataBR(a.horario)} ${horarioBR(a.horario, true)}`;
 
-      csv += `"${nome}","${matricula}","${turma}","${tipo}","${horario}"\n`;
+      csv += [a.aluno.nome, matricula, turma, tipo, horario]
+        .map(value => `"${value.replace(/"/g, '""')}"`).join(',') + '\n';
     });
 
     return csv;

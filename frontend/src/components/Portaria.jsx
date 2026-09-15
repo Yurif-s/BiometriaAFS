@@ -1,21 +1,22 @@
 import React, { useState } from 'react';
 import { FaCheckCircle, FaUser, FaIdBadge, FaDoorOpen, FaClock, FaSignOutAlt, FaSignInAlt, FaFingerprint } from 'react-icons/fa';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { horarioBR } from '../utils/datas';
 
 export default function Portaria() {
   const [alunoInfo, setAlunoInfo] = useState(null);
 
   // Quando a biometria for lida com sucesso (liberado/entrada)
   const handleBiometriaLida = (data) => {
-    const { alunoNome, alunoMatricula, alunoTurma, entrada, saida } = data;
+    const { alunoNome, alunoMatricula, alunoTurma, tipoAcesso, horarioAcesso } = data;
 
     if (alunoNome) {
       setAlunoInfo({
         nome: alunoNome,
         matricula: alunoMatricula,
         turma: alunoTurma,
-        tipo: saida ? 'Saída' : 'Entrada',
-        horario: new Date(saida || entrada).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        tipo: tipoAcesso || 'Entrada',
+        horario: horarioBR(horarioAcesso || new Date()),
       });
     }
   };

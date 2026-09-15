@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/modules/app.module';
@@ -26,6 +26,7 @@ describe('Aluno Enrollment Flow (e2e)', () => {
   };
 
   const mockAlunoRepository = {
+    findPresentesSemSaidaDesde: jest.fn().mockResolvedValue([]),
     findAll: jest.fn().mockImplementation(async () => {
       return db.alunos;
     }),
@@ -72,6 +73,7 @@ describe('Aluno Enrollment Flow (e2e)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     await app.init();
 
     biometriaGateway = moduleFixture.get(BiometriaGateway);
@@ -98,14 +100,17 @@ describe('Aluno Enrollment Flow (e2e)', () => {
       .get('/alunos/biometria/solicitacao')
       .expect(200);
 
-    expect(pollResponse.body).toEqual({ cadastrar: true, id: 1 });
+    expect(pollResponse.body).toEqual({ cadastrar: true, deletar: false, id: 1 });
 
-    // 3. Uma segunda chamada de polling deve retornar cadastrar=false (leitura destrutiva)
+    // 3. O pedido se repete até o leitor confirmar seu recebimento.
     const secondPollResponse = await request(app.getHttpServer())
       .get('/alunos/biometria/solicitacao')
       .expect(200);
 
-    expect(secondPollResponse.body).toEqual({ cadastrar: false });
+    expect(secondPollResponse.body).toEqual({ cadastrar: true, deletar: false, id: 1 });
+    await request(app.getHttpServer()).post('/alunos/biometria/solicitacao/ack').expect(200);
+    const confirmedPoll = await request(app.getHttpServer()).get('/alunos/biometria/solicitacao').expect(200);
+    expect(confirmedPoll.body).toEqual({ cadastrar: false, deletar: false });
 
     // 4. O leitor grava a biometria sob o ID 1 e envia a leitura para notificar o frontend:
     // POST /alunos/biometria/leitura
@@ -116,7 +121,9 @@ describe('Aluno Enrollment Flow (e2e)', () => {
       .expect(201);
 
     expect(readResponse.body).toEqual({ encontrado: false, aluno: undefined });
-    expect(biometriaGateway.emitirBiometriaLida).toHaveBeenCalledWith(1, undefined);
+    expect(biometriaGateway.emitirBiometriaLida).toHaveBeenCalledWith(
+      1, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+    );
 
     // 5. O frontend recebe a notificação, preenche o ID e salva o aluno:
     // POST /alunos

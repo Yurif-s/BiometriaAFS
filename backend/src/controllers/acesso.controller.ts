@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, HttpCode, HttpStatus, ParseIntPipe } from '@nestjs/common';
 import { AcessoService } from '../services/acesso.service';
 import { CreateAcessoDto } from '../dtos/create-acesso.dto';
 import { UpdateAcessoDto } from '../dtos/update-acesso.dto';
@@ -23,18 +23,18 @@ export class AcessoController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.acessoService.findById(+id);
+  async findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.acessoService.findById(id);
   }
 
   @Put(':id')
-  async update(@Param('id') id: string, @Body() updateAcessoDto: UpdateAcessoDto) {
-    return this.acessoService.update(+id, updateAcessoDto);
+  async update(@Param('id', ParseIntPipe) id: number, @Body() updateAcessoDto: UpdateAcessoDto) {
+    return this.acessoService.update(id, updateAcessoDto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string) {
-    return this.acessoService.delete(+id);
+  async delete(@Param('id', ParseIntPipe) id: number) {
+    return this.acessoService.delete(id);
   }
 }

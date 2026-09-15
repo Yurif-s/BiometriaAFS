@@ -5,6 +5,7 @@ import FiltrosAcesso from "../components/dashboard/FiltrosAcesso";
 import ExportButton from "../components/dashboard/ExportButton";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
 import "./HistoricoPage.css";
+import { dataBR, dataHoraBR, paraInputDataHora, deInputDataHora } from "../utils/datas";
 
 export default function HistoricoPage({ showToast }) {
   const {
@@ -12,24 +13,23 @@ export default function HistoricoPage({ showToast }) {
     totalPages,
     totalItems,
     loading,
+    error,
     fetchAcessosFiltrados,
     updateAcesso,
     deleteAcesso
   } = useAcessos();
 
-  const [filters, setFilters] = useState({
-    dataInicio: "",
-    dataFim: "",
-    turmaId: "",
-    tipo: "",
-    busca: ""
-  });
+  const [filters, setFilters] = useState({});
   const [page, setPage] = useState(1);
   const limit = 10;
 
   useEffect(() => {
     fetchAcessosFiltrados({ ...filters, page, limit });
   }, [filters, page, fetchAcessosFiltrados]);
+
+  useEffect(() => {
+    if (page > Math.max(1, totalPages)) setPage(Math.max(1, totalPages));
+  }, [page, totalPages]);
 
   const handleFilter = (newFilters) => {
     // Normalizar strings vazias
@@ -44,13 +44,7 @@ export default function HistoricoPage({ showToast }) {
   };
 
   const handleClear = () => {
-    setFilters({
-      dataInicio: "",
-      dataFim: "",
-      turmaId: "",
-      tipo: "",
-      busca: ""
-    });
+    setFilters({});
     setPage(1);
   };
 
@@ -62,11 +56,9 @@ export default function HistoricoPage({ showToast }) {
 
   const handleEdit = (acesso) => {
     setEditingId(acesso.id);
-    const date = new Date(acesso.horario);
-    date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
     setEditForm({
       tipo: acesso.tipo,
-      horario: date.toISOString().slice(0, 16)
+      horario: paraInputDataHora(acesso.horario)
     });
   };
 
@@ -74,8 +66,9 @@ export default function HistoricoPage({ showToast }) {
     try {
       await updateAcesso(id, {
         tipo: editForm.tipo,
-        horario: new Date(editForm.horario).toISOString(),
+        horario: deInputDataHora(editForm.horario),
       });
+      await fetchAcessosFiltrados({ ...filters, page, limit });
       showToast("Acesso atualizado com sucesso!");
       setEditingId(null);
     } catch (err) {
@@ -88,6 +81,7 @@ export default function HistoricoPage({ showToast }) {
     setDeleteLoading(true);
     try {
       await deleteAcesso(deleteTarget.id);
+      await fetchAcessosFiltrados({ ...filters, page, limit });
       showToast("Acesso removido com sucesso!");
       setDeleteTarget(null);
     } catch (err) {
@@ -114,12 +108,13 @@ export default function HistoricoPage({ showToast }) {
         </div>
         <ExportButton
           filters={filters}
-          filename={`historico_acessos_${new Date().toLocaleDateString('en-CA')}.csv`}
+          filename={`historico_acessos_${dataBR()}.csv`}
           onError={showToast}
         />
       </div>
 
       <div className="table-container-card">
+        {error && <p role="alert">Não foi possível carregar o histórico. Confira o intervalo de datas e tente novamente.</p>}
         {loading ? (
           <div className="table-loading">
             <div className="spinner"></div>
@@ -178,12 +173,14 @@ export default function HistoricoPage({ showToast }) {
                       {editingId === acesso.id ? (
                         <input
                           type="datetime-local"
+                          step="0.001"
+                          required
                           className="form-input-table"
                           value={editForm.horario}
                           onChange={(e) => setEditForm({ ...editForm, horario: e.target.value })}
                         />
                       ) : (
-                        new Date(acesso.horario).toLocaleString()
+                        dataHoraBR(acesso.horario)
                       )}
                     </td>
                     <td className="actions-cell">

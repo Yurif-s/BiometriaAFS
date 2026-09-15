@@ -246,6 +246,17 @@ pnpm run test:cov    # Gera relatório de cobertura de código
 pnpm run test:e2e    # Executa testes end-to-end
 ```
 
+Os testes HTTP usam repositórios/banco simulados e não acessam o banco de produção.
+O frontend possui testes de conversão de datas, executados com `pnpm test` dentro de `frontend/`.
+
+### Datas e frequência
+
+- Datas de consulta usam `YYYY-MM-DD` e representam o dia no Ceará (`America/Fortaleza`, UTC-3).
+- Horários são transportados como instantes ISO; telas, edição e CSV exibem o horário do Ceará, independentemente do fuso do computador ou servidor.
+- Horários enviados à API sem offset são interpretados em UTC-3.
+- A saída prevista às 16h35 continua disponível no histórico e no cálculo dos períodos, mas só conta como movimentação ocorrida depois desse horário. Antes disso, o aluno permanece no indicador de presentes.
+- O backend valida datas, intervalos, paginação, tipos de acesso e o ID recebido nas leituras biométricas.
+
 ---
 
 ## 📁 Estrutura de Diretórios

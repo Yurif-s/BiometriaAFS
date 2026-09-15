@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../services/prisma.service';
 import { Acesso } from '@prisma/client';
+import { inicioDoDiaBR, fimDoDiaBR } from '../utils/datas';
 
 @Injectable()
 export class AcessoRepository {
@@ -49,12 +50,12 @@ export class AcessoRepository {
 
   async findToday(): Promise<Acesso[]> {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
 
     return this.prisma.acesso.findMany({
       where: {
         horario: {
-          gte: today,
+          gte: inicioDoDiaBR(today),
+          lte: fimDoDiaBR(today),
         },
       },
       orderBy: {

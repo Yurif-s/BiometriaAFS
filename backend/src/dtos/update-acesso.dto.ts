@@ -1,11 +1,12 @@
-import { IsString, IsOptional, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsDateString, IsIn } from 'class-validator';
 
 export class UpdateAcessoDto {
   @IsString()
   @IsOptional()
+  @IsIn(['Entrada', 'Saída'])
   tipo?: string;
 
-  @IsDateString()
+  @IsDateString({ strict: true })
   @IsOptional()
   horario?: string | Date;
 }

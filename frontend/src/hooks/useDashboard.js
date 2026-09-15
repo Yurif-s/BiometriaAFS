@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import * as apiService from '../services/api';
+import { dataBR } from '../utils/datas';
 
 export function useDashboard(pollingIntervalMs = 30000) {
   const [resumo, setResumo] = useState(null);
@@ -21,7 +22,7 @@ export function useDashboard(pollingIntervalMs = 30000) {
 
   const fetchPorHora = useCallback(async () => {
     try {
-      const todayStr = new Date().toLocaleDateString('en-CA');
+      const todayStr = dataBR();
       const data = await apiService.getDashboardPorHora(todayStr);
       setPorHora(data);
     } catch (err) {

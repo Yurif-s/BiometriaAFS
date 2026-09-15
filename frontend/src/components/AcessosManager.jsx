@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { FaHistory, FaTrash, FaEdit } from "react-icons/fa";
 import { useAcessos } from "../hooks/useAcessos";
 import DeleteConfirmModal from "./DeleteConfirmModal";
+import { dataHoraBR, paraInputDataHora, deInputDataHora } from "../utils/datas";
 
 export default function AcessosManager({ showToast }) {
   const { todosAcessos, fetchTodosAcessos, updateAcesso, deleteAcesso, loading } = useAcessos();
@@ -16,11 +17,9 @@ export default function AcessosManager({ showToast }) {
 
   const handleEdit = (acesso) => {
     setEditingId(acesso.id);
-    const date = new Date(acesso.horario);
-    date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
     setEditForm({
       tipo: acesso.tipo,
-      horario: date.toISOString().slice(0, 16) // yyyy-MM-ddThh:mm
+      horario: paraInputDataHora(acesso.horario)
     });
   };
 
@@ -28,7 +27,7 @@ export default function AcessosManager({ showToast }) {
     try {
       await updateAcesso(id, {
         tipo: editForm.tipo,
-        horario: new Date(editForm.horario).toISOString(),
+        horario: deInputDataHora(editForm.horario),
       });
       showToast("Acesso atualizado com sucesso!", "success");
       setEditingId(null);
@@ -114,12 +113,14 @@ export default function AcessosManager({ showToast }) {
                       {editingId === acesso.id ? (
                         <input
                           type="datetime-local"
+                          step="0.001"
+                          required
                           className="form-input"
                           value={editForm.horario}
                           onChange={(e) => setEditForm({ ...editForm, horario: e.target.value })}
                         />
                       ) : (
-                        new Date(acesso.horario).toLocaleString()
+                        dataHoraBR(acesso.horario)
                       )}
                     </td>
                     <td className="actions-cell">

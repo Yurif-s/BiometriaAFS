@@ -17,7 +17,7 @@ export class DashboardController {
 
   @Get('tendencia')
   async getTendencia(@Query('dias') dias?: string) {
-    const diasNum = dias ? parseInt(dias, 10) : 7;
+    const diasNum = dias === undefined ? 7 : Number(dias);
     return this.dashboardService.getTendencia(diasNum);
   }
 
@@ -34,11 +34,11 @@ export class DashboardController {
     return this.dashboardService.getAcessosPaginados({
       dataInicio,
       dataFim,
-      turmaId: turmaId ? parseInt(turmaId, 10) : undefined,
+      turmaId: turmaId === undefined ? undefined : Number(turmaId),
       tipo,
       busca,
-      page: page ? parseInt(page, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
+      page: page === undefined ? undefined : Number(page),
+      limit: limit === undefined ? undefined : Number(limit),
     });
   }
 
@@ -63,7 +63,7 @@ export class DashboardController {
     return this.dashboardService.exportCsv({
       dataInicio,
       dataFim,
-      turmaId: turmaId ? parseInt(turmaId, 10) : undefined,
+      turmaId: turmaId === undefined ? undefined : Number(turmaId),
       tipo,
       busca,
     });

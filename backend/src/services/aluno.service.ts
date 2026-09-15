@@ -13,6 +13,7 @@ import { CreateAlunoDto } from '../dtos/create-aluno.dto';
 import { UpdateAlunoDto } from '../dtos/update-aluno.dto';
 import { BiometriaGateway } from '../gateways/biometria.gateway';
 import { AcessoRepository } from '../repositories/acesso.repository';
+import { dataBR, inicioDoDiaBR, horarioNoDiaBR, interpretarHorario } from '../utils/datas';
 
 @Injectable()
 export class AlunoService implements OnModuleInit, OnModuleDestroy {
@@ -49,13 +50,11 @@ export class AlunoService implements OnModuleInit, OnModuleDestroy {
   }
 
   private inicioDoDia(data: Date): Date {
-    const inicio = new Date(data);
-    inicio.setHours(0, 0, 0, 0);
-    return inicio;
+    return inicioDoDiaBR(data);
   }
 
   private mesmoDia(a: Date | null, b: Date): boolean {
-    return !!a && a >= this.inicioDoDia(b);
+    return !!a && dataBR(a) === dataBR(b);
   }
 
   private deveMarcarSaidaPadrao(agora: Date): boolean {
@@ -63,15 +62,8 @@ export class AlunoService implements OnModuleInit, OnModuleDestroy {
   }
 
   private saidaPadraoPara(data: Date): Date {
-    const saidaPadrao = new Date(data);
-    saidaPadrao.setHours(
-      AlunoService.HORA_SAIDA_PADRAO,
-      AlunoService.MINUTO_SAIDA_PADRAO,
-      0,
-      0,
-    );
-
-    return saidaPadrao;
+    return horarioNoDiaBR(data,
+      `${AlunoService.HORA_SAIDA_PADRAO}:${AlunoService.MINUTO_SAIDA_PADRAO}:00`);
   }
 
   private ehSaidaPadrao(data: Date | null, referencia: Date): boolean {
@@ -121,6 +113,8 @@ export class AlunoService implements OnModuleInit, OnModuleDestroy {
     const saidaPadrao = this.saidaPadraoPara(agora);
 
     for (const aluno of presentes) {
+      // Uma entrada após o encerramento não pode receber uma saída anterior a ela.
+      if (!aluno.entrada || aluno.entrada >= saidaPadrao) continue;
       await this.alunoRepository.update(aluno.id, { saida: saidaPadrao });
       await this.registrarAcesso(aluno.id, 'Saída', saidaPadrao);
     }
@@ -211,6 +205,9 @@ export class AlunoService implements OnModuleInit, OnModuleDestroy {
   }
 
   async cancelarCadastro(id: number): Promise<void> {
+    if (await this.alunoRepository.findByBiometria(id)) {
+      throw new ConflictException('Não é possível cancelar uma biometria já vinculada a um aluno.');
+    }
     this.reservedIds.delete(id);
     if (this.pendingEnrollmentId === id) {
       this.pendingEnrollmentId = null;
@@ -329,8 +326,8 @@ export class AlunoService implements OnModuleInit, OnModuleDestroy {
         matricula: createAlunoDto.matricula,
         nome: createAlunoDto.nome,
         biometria: createAlunoDto.biometria,
-        entrada: createAlunoDto.entrada ? new Date(createAlunoDto.entrada) : undefined,
-        saida: createAlunoDto.saida ? new Date(createAlunoDto.saida) : undefined,
+        entrada: createAlunoDto.entrada ? interpretarHorario(createAlunoDto.entrada) : undefined,
+        saida: createAlunoDto.saida ? interpretarHorario(createAlunoDto.saida) : undefined,
         turma_id: createAlunoDto.turma_id,
       } as Aluno);
 
@@ -434,10 +431,10 @@ export class AlunoService implements OnModuleInit, OnModuleDestroy {
       return await this.alunoRepository.update(id, {
         ...updateAlunoDto,
         entrada: updateAlunoDto.entrada
-          ? new Date(updateAlunoDto.entrada)
+          ? interpretarHorario(updateAlunoDto.entrada)
           : undefined,
         saida: updateAlunoDto.saida
-          ? new Date(updateAlunoDto.saida)
+          ? interpretarHorario(updateAlunoDto.saida)
           : undefined,
       });
     } catch (error) {

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { FaBroadcastTower, FaUserCheck, FaUserMinus } from "react-icons/fa";
 import { useWebSocket } from "../../hooks/useWebSocket";
 import { getAcessosHoje } from "../../services/api";
+import { horarioBR } from "../../utils/datas";
 import "./LiveFeed.css";
 
 export default function LiveFeed() {
@@ -10,7 +11,7 @@ export default function LiveFeed() {
   useEffect(() => {
     getAcessosHoje()
       .then((data) => {
-        setFeed(data.slice(0, 10));
+        setFeed(data.filter(acesso => new Date(acesso.horario) <= new Date()).slice(0, 10));
       })
       .catch((err) => console.error("Erro ao carregar feed inicial", err));
   }, []);
@@ -20,8 +21,8 @@ export default function LiveFeed() {
 
     const novoAcesso = {
       id: `live-${Date.now()}-${Math.random()}`,
-      tipo: wsData.saida ? "Saída" : "Entrada",
-      horario: wsData.saida || wsData.entrada || new Date().toISOString(),
+      tipo: wsData.tipoAcesso || "Entrada",
+      horario: wsData.horarioAcesso || new Date().toISOString(),
       aluno: {
         nome: wsData.alunoNome,
         matricula: wsData.alunoMatricula,
@@ -55,11 +56,7 @@ export default function LiveFeed() {
         ) : (
           feed.map((acesso) => {
             const isEntrada = acesso.tipo === "Entrada";
-            const hora = new Date(acesso.horario).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit"
-            });
+            const hora = horarioBR(acesso.horario);
 
             return (
               <div 

@@ -4,11 +4,13 @@ import { getTurmas, getDashboardFrequenciaTurma, getDashboardTendencia } from ".
 import PeriodoTable from "../components/dashboard/PeriodoTable";
 import TendenciaChart from "../components/dashboard/TendenciaChart";
 import "./RelatoriosPage.css";
+import { dataBR } from "../utils/datas";
 
 export default function RelatoriosPage() {
   const [turmas, setTurmas] = useState([]);
   const [selectedTurmaId, setSelectedTurmaId] = useState("");
-  const [selectedDate, setSelectedDate] = useState(new Date().toLocaleDateString('en-CA'));
+  const [selectedDate, setSelectedDate] = useState(() => dataBR());
+  const [errorFreq, setErrorFreq] = useState(null);
   
   const [frequenciaData, setFrequenciaData] = useState([]);
   const [loadingFreq, setLoadingFreq] = useState(false);
@@ -36,15 +38,23 @@ export default function RelatoriosPage() {
   }, []);
 
   useEffect(() => {
-    if (selectedTurmaId) {
-      setLoadingFreq(true);
-      getDashboardFrequenciaTurma(selectedTurmaId, selectedDate)
-        .then((data) => {
-          setFrequenciaData(data);
-        })
-        .catch(console.error)
-        .finally(() => setLoadingFreq(false));
+    let active = true;
+    setFrequenciaData([]);
+    setErrorFreq(null);
+    if (!selectedTurmaId || !selectedDate) {
+      setLoadingFreq(false);
+      return;
     }
+    setLoadingFreq(true);
+    getDashboardFrequenciaTurma(selectedTurmaId, selectedDate)
+      .then((data) => {
+        if (active) setFrequenciaData(data);
+      })
+      .catch(() => {
+        if (active) setErrorFreq('Não foi possível consultar a frequência para esta data.');
+      })
+      .finally(() => { if (active) setLoadingFreq(false); });
+    return () => { active = false; };
   }, [selectedTurmaId, selectedDate]);
 
   return (
@@ -94,7 +104,7 @@ export default function RelatoriosPage() {
           <p className="widget-subtitle">A grade de 9 períodos reflete a presença com base no horário de entrada e saída</p>
         </div>
         <div className="widget-body">
-          {loadingFreq ? (
+          {errorFreq ? <p role="alert">{errorFreq}</p> : !selectedDate ? <p>Selecione uma data para consultar.</p> : loadingFreq ? (
             <div className="table-loading">
               <div className="spinner"></div>
               <p>Gerando mapa de períodos...</p>

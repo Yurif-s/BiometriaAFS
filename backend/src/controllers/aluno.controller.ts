@@ -14,6 +14,7 @@ import { AlunoService } from '../services/aluno.service';
 import { CreateAlunoDto } from '../dtos/create-aluno.dto';
 import { UpdateAlunoDto } from '../dtos/update-aluno.dto';
 import { Aluno } from '@prisma/client';
+import { LeituraBiometriaDto, CancelarBiometriaDto } from '../dtos/biometria.dto';
 
 @Controller('alunos')
 export class AlunoController {
@@ -29,7 +30,7 @@ export class AlunoController {
   // Chamado pelo ESP32 após identificar uma digital
   @Post('biometria/leitura')
   async registrarLeitura(
-    @Body() body: { biometria: number },
+    @Body() body: LeituraBiometriaDto,
   ): Promise<{ encontrado: boolean; aluno?: Aluno }> {
     return this.alunoService.registrarLeitura(body.biometria);
   }
@@ -61,7 +62,7 @@ export class AlunoController {
   @Post('biometria/cancelar-cadastro')
   @HttpCode(HttpStatus.OK)
   async cancelarCadastro(
-    @Body() body: { id: number; reason?: string },
+    @Body() body: CancelarBiometriaDto,
   ): Promise<void> {
     console.log(`[AlunoController] Recebeu cancelar-cadastro para o ID: ${body.id} | Motivo: ${body.reason || 'não informado'}`);
     return this.alunoService.cancelarCadastro(body.id);

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../services/prisma.service';
 import { Prisma, Acesso, Aluno } from '@prisma/client';
+import { inicioDoDiaBR as startOfDayBR, fimDoDiaBR as endOfDayBR, adicionarDiasBR } from '../utils/datas';
 
 type AcessoComAlunoTurma = Prisma.AcessoGetPayload<{
   include: {
@@ -11,20 +12,6 @@ type AcessoComAlunoTurma = Prisma.AcessoGetPayload<{
     };
   };
 }>;
-
-// Helpers para garantir que as datas usem o fuso de Brasília (UTC-3),
-// independente do timezone do servidor cloud.
-function startOfDayBR(date?: Date): Date {
-  const d = date ? new Date(date) : new Date();
-  const brString = d.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
-  return new Date(`${brString}T00:00:00-03:00`);
-}
-
-function endOfDayBR(date?: Date): Date {
-  const d = date ? new Date(date) : new Date();
-  const brString = d.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
-  return new Date(`${brString}T23:59:59.999-03:00`);
-}
 
 @Injectable()
 export class DashboardRepository {
@@ -39,8 +26,8 @@ export class DashboardRepository {
   }
 
   async countAcessosHoje(): Promise<{ entrada: number; saida: number }> {
-    const startOfToday = startOfDayBR();
-    const endOfToday = endOfDayBR();
+    const endOfToday = new Date();
+    const startOfToday = startOfDayBR(endOfToday);
 
     const entradas = await this.prisma.acesso.count({
       where: {
@@ -66,16 +53,19 @@ export class DashboardRepository {
   }
 
   async findPresentesAgora(): Promise<Aluno[]> {
-    const startOfToday = startOfDayBR();
+    const agora = new Date();
+    const startOfToday = startOfDayBR(agora);
 
-    // Presente hoje significa: entrada foi hoje, e ou não saiu hoje ou a última saída foi antes da entrada
+    // A saída prevista no futuro ainda não encerra a presença atual.
     return this.prisma.aluno.findMany({
       where: {
         entrada: {
           gte: startOfToday,
+          lte: agora,
         },
         OR: [
           { saida: null },
+          { saida: { gt: agora } },
           {
             saida: {
               lt: this.prisma.aluno.fields.entrada,
@@ -90,12 +80,14 @@ export class DashboardRepository {
   }
 
   async findNaoEntraramHoje(): Promise<Aluno[]> {
-    const startOfToday = startOfDayBR();
+    const agora = new Date();
+    const startOfToday = startOfDayBR(agora);
 
     return this.prisma.aluno.findMany({
       where: {
         OR: [
           { entrada: null },
+          { entrada: { gt: agora } },
           {
             entrada: {
               lt: startOfToday,
@@ -135,13 +127,13 @@ export class DashboardRepository {
 
   async findAcessosPeriodo(dias: number): Promise<Acesso[]> {
     const now = new Date();
-    now.setDate(now.getDate() - dias);
-    const startOfPeriod = startOfDayBR(now);
+    const startOfPeriod = adicionarDiasBR(now, -(dias - 1));
 
     return this.prisma.acesso.findMany({
       where: {
         horario: {
           gte: startOfPeriod,
+          lte: now,
         },
       },
       orderBy: {
@@ -166,10 +158,10 @@ export class DashboardRepository {
     if (dataInicio || dataFim) {
       where.horario = {};
       if (dataInicio) {
-        where.horario.gte = new Date(`${dataInicio}T00:00:00-03:00`);
+        where.horario.gte = startOfDayBR(dataInicio);
       }
       if (dataFim) {
-        where.horario.lte = new Date(`${dataFim}T23:59:59.999-03:00`);
+        where.horario.lte = endOfDayBR(dataFim);
       }
     }
 

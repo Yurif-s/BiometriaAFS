@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import * as apiService from '../services/api';
 
 export function useAcessos() {
@@ -9,6 +9,7 @@ export function useAcessos() {
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const filteredRequest = useRef(0);
 
   const fetchAcessosHoje = useCallback(async () => {
     setLoading(true);
@@ -39,18 +40,24 @@ export function useAcessos() {
   }, []);
 
   const fetchAcessosFiltrados = useCallback(async (filters) => {
+    const request = ++filteredRequest.current;
     setLoading(true);
     try {
       const data = await apiService.getDashboardAcessos(filters);
+      if (request !== filteredRequest.current) return;
       setPaginatedAcessos(data.data);
       setTotalPages(data.totalPages);
       setTotalItems(data.total);
       setError(null);
     } catch (err) {
+      if (request !== filteredRequest.current) return;
+      setPaginatedAcessos([]);
+      setTotalItems(0);
+      setTotalPages(1);
       setError(err);
       console.error('Erro ao buscar acessos filtrados', err);
     } finally {
-      setLoading(false);
+      if (request === filteredRequest.current) setLoading(false);
     }
   }, []);
 

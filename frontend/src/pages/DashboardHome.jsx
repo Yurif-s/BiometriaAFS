@@ -18,6 +18,7 @@ export default function DashboardHome() {
       .then((acessos) => {
         const counts = {};
         acessos.forEach((a) => {
+          if (new Date(a.horario) > new Date()) return;
           const t = a.aluno?.turma?.nome || "Sem Turma";
           counts[t] = (counts[t] || 0) + 1;
         });

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { FaFingerprint, FaCheckCircle, FaExclamationTriangle, FaUserPlus, FaCog, FaHistory } from "react-icons/fa";
 import { useWebSocket } from "../hooks/useWebSocket";
+import { dataBR, horarioBR, TIME_ZONE } from "../utils/datas";
 
 export default function TerminalAcesso({ onGoToCadastro, onGoToAdmin, showToast }) {
   const [time, setTime] = useState(new Date());
@@ -66,7 +67,7 @@ export default function TerminalAcesso({ onGoToCadastro, onGoToAdmin, showToast 
         matricula: alunoMatricula,
         turma: alunoTurma,
         tipo,
-        horario: new Date(horarioAcesso).toLocaleTimeString(),
+        horario: horarioBR(horarioAcesso),
       });
       setStatus("success");
       setFalhas(0);
@@ -130,17 +131,12 @@ export default function TerminalAcesso({ onGoToCadastro, onGoToAdmin, showToast 
 
   // Filtra e mapeia os acessos para o formato exibido
   const getFilteredAcessos = () => {
-    let list = dbAcessos;
+    let list = dbAcessos.filter(acesso => new Date(acesso.horario) <= time);
 
     if (dataFiltro) {
-      list = dbAcessos.filter((acesso) => {
+      list = list.filter((acesso) => {
         if (!acesso.horario) return false;
-        const dataAcesso = new Date(acesso.horario);
-        const ano = dataAcesso.getFullYear();
-        const mes = String(dataAcesso.getMonth() + 1).padStart(2, "0");
-        const dia = String(dataAcesso.getDate()).padStart(2, "0");
-        const dataAcessoStr = `${ano}-${mes}-${dia}`;
-        return dataAcessoStr === dataFiltro;
+        return dataBR(acesso.horario) === dataFiltro;
       });
     }
 
@@ -149,7 +145,7 @@ export default function TerminalAcesso({ onGoToCadastro, onGoToAdmin, showToast 
       nome: acesso.aluno?.nome || "Aluno Desconhecido",
       turma: acesso.aluno?.turma?.nome || "Sem Turma",
       tipo: acesso.tipo,
-      horario: new Date(acesso.horario).toLocaleTimeString(),
+      horario: horarioBR(acesso.horario),
     }));
   };
 
@@ -173,9 +169,10 @@ export default function TerminalAcesso({ onGoToCadastro, onGoToAdmin, showToast 
         {/* LADO ESQUERDO: Relógio e Sensor */}
         <div className="terminal-card main-card">
           <div className="clock-section">
-            <div className="clock-time">{time.toLocaleTimeString()}</div>
+            <div className="clock-time">{horarioBR(time)}</div>
             <div className="clock-date">
               {time.toLocaleDateString("pt-BR", {
+                timeZone: TIME_ZONE,
                 weekday: "long",
                 day: "numeric",
                 month: "long",

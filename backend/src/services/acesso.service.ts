@@ -4,6 +4,7 @@ import { AlunoRepository } from '../repositories/aluno.repository';
 import { CreateAcessoDto } from '../dtos/create-acesso.dto';
 import { UpdateAcessoDto } from '../dtos/update-acesso.dto';
 import { Acesso } from '@prisma/client';
+import { dataBR, inicioDoDiaBR, fimDoDiaBR, interpretarHorario } from '../utils/datas';
 
 @Injectable()
 export class AcessoService {
@@ -14,11 +15,13 @@ export class AcessoService {
 
   async create(createAcessoDto: CreateAcessoDto): Promise<Acesso> {
     try {
-      return await this.acessoRepository.create({
+      const acesso = await this.acessoRepository.create({
         tipo: createAcessoDto.tipo,
         aluno_id: createAcessoDto.aluno_id,
-        horario: createAcessoDto.horario ? new Date(createAcessoDto.horario) : new Date(),
+        horario: createAcessoDto.horario ? interpretarHorario(createAcessoDto.horario) : new Date(),
       });
+      await this.sincronizarPresencaSeHoje(acesso.aluno_id, acesso.horario);
+      return acesso;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro desconhecido';
       throw new BadRequestException('Erro ao registrar acesso: ' + message);
@@ -47,11 +50,13 @@ export class AcessoService {
     try {
       const acessoAtualizado = await this.acessoRepository.update(id, {
         tipo: updateAcessoDto.tipo,
-        horario: updateAcessoDto.horario ? new Date(updateAcessoDto.horario) : undefined,
+        horario: updateAcessoDto.horario ? interpretarHorario(updateAcessoDto.horario) : undefined,
       });
 
       await this.sincronizarPresencaSeHoje(acessoAntigo.aluno_id, acessoAntigo.horario);
-      await this.sincronizarPresencaSeHoje(acessoAtualizado.aluno_id, acessoAtualizado.horario);
+      if (!this.mesmoDia(acessoAntigo.horario, acessoAtualizado.horario)) {
+        await this.sincronizarPresencaSeHoje(acessoAtualizado.aluno_id, acessoAtualizado.horario);
+      }
 
       return acessoAtualizado;
     } catch (error) {
@@ -101,22 +106,14 @@ export class AcessoService {
   }
 
   private mesmoDia(a: Date, b: Date): boolean {
-    return (
-      a.getFullYear() === b.getFullYear() &&
-      a.getMonth() === b.getMonth() &&
-      a.getDate() === b.getDate()
-    );
+    return dataBR(a) === dataBR(b);
   }
 
   private inicioDoDia(data: Date): Date {
-    const d = new Date(data);
-    d.setHours(0, 0, 0, 0);
-    return d;
+    return inicioDoDiaBR(data);
   }
 
   private fimDoDia(data: Date): Date {
-    const d = new Date(data);
-    d.setHours(23, 59, 59, 999);
-    return d;
+    return fimDoDiaBR(data);
   }
 }
