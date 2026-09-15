@@ -46,8 +46,9 @@ export default function FiltrosAcesso({ onFilter, onClear }) {
     <form className="filtros-acesso-form" onSubmit={handleSubmit}>
       <div className="filtros-grid">
         <div className="filtro-item">
-          <label>Data Início</label>
+          <label htmlFor="filtro-inicio">Data inicial</label>
           <input
+            id="filtro-inicio"
             type="date"
             className="filtro-input"
             value={filters.dataInicio}
@@ -55,8 +56,9 @@ export default function FiltrosAcesso({ onFilter, onClear }) {
           />
         </div>
         <div className="filtro-item">
-          <label>Data Fim</label>
+          <label htmlFor="filtro-fim">Data final</label>
           <input
+            id="filtro-fim"
             type="date"
             className="filtro-input"
             value={filters.dataFim}
@@ -64,8 +66,9 @@ export default function FiltrosAcesso({ onFilter, onClear }) {
           />
         </div>
         <div className="filtro-item">
-          <label>Turma</label>
+          <label htmlFor="filtro-turma">Turma</label>
           <select
+            id="filtro-turma"
             className="filtro-select"
             value={filters.turmaId}
             onChange={(e) => handleChange("turmaId", e.target.value)}
@@ -79,8 +82,9 @@ export default function FiltrosAcesso({ onFilter, onClear }) {
           </select>
         </div>
         <div className="filtro-item">
-          <label>Tipo</label>
+          <label htmlFor="filtro-tipo">Tipo</label>
           <select
+            id="filtro-tipo"
             className="filtro-select"
             value={filters.tipo}
             onChange={(e) => handleChange("tipo", e.target.value)}
@@ -91,25 +95,26 @@ export default function FiltrosAcesso({ onFilter, onClear }) {
           </select>
         </div>
         <div className="filtro-item busca-item">
-          <label>Buscar</label>
+          <label htmlFor="filtro-busca">Buscar aluno</label>
           <div className="busca-input-container">
             <input
+              id="filtro-busca"
               type="text"
               placeholder="Nome ou Matrícula..."
               className="filtro-input-busca"
               value={filters.busca}
               onChange={(e) => handleChange("busca", e.target.value)}
             />
-            <button type="submit" className="btn-busca-submit">
+            <button type="submit" className="btn-busca-submit" aria-label="Buscar acessos">
               <FaSearch />
             </button>
           </div>
         </div>
-      </div>
-      <div className="filtros-actions">
+        <div className="filtros-actions">
         <button type="button" className="btn-clear-filtros" onClick={handleClear}>
           <FaTimes /> Limpar Filtros
         </button>
+        </div>
       </div>
     </form>
   );

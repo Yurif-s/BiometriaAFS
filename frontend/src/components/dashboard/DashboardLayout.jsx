@@ -2,10 +2,13 @@ import React, { useState, useEffect } from "react";
 import { NavLink, Outlet, Link, useLocation } from "react-router-dom";
 import { FaChartLine, FaHistory, FaBook, FaUsersCog, FaTerminal, FaDoorOpen, FaBars, FaTimes } from "react-icons/fa";
 import "./DashboardLayout.css";
+import ConnectionStatus from '../ConnectionStatus';
+import { useWebSocket } from '../../hooks/useWebSocket';
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const connection = useWebSocket();
 
   useEffect(() => {
     setSidebarOpen(false);
@@ -101,10 +104,7 @@ export default function DashboardLayout() {
               <p>EEEP Adolfo Ferreira de Sousa</p>
             </div>
           </div>
-          <div className="header-status">
-            <span className="status-indicator-dot online"></span>
-            <span className="status-indicator-text">Sensor Biométrico Online</span>
-          </div>
+          <ConnectionStatus connection={connection} />
         </header>
         
         <div className="dashboard-body">

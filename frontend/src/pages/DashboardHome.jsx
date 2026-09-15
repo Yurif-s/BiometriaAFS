@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FaUsers, FaArrowAltCircleRight, FaArrowAltCircleLeft, FaDoorOpen, FaUserTimes, FaFingerprint } from "react-icons/fa";
+import { FaUsers, FaArrowAltCircleRight, FaArrowAltCircleLeft, FaDoorOpen, FaUserTimes, FaFingerprint, FaChartLine } from "react-icons/fa";
 import { useDashboard } from "../hooks/useDashboard";
 import { getAcessosHoje } from "../services/api";
 import KpiCard from "../components/dashboard/KpiCard";
@@ -8,9 +8,11 @@ import HourlyChart from "../components/dashboard/HourlyChart";
 import TipoChart from "../components/dashboard/TipoChart";
 import TurmaRanking from "../components/dashboard/TurmaRanking";
 import "./DashboardHome.css";
+import PageHeader from '../components/PageHeader';
+import Feedback from '../components/Feedback';
 
 export default function DashboardHome() {
-  const { resumo, porHora, loading, error } = useDashboard(30000);
+  const { resumo, porHora, loading, error, refresh } = useDashboard(30000);
   const [rankingData, setRankingData] = useState([]);
 
   useEffect(() => {
@@ -42,8 +44,8 @@ export default function DashboardHome() {
 
   if (error) {
     return (
-      <div className="error-container">
-        <p>Erro ao carregar dados do dashboard. Verifique a conexão com o servidor.</p>
+      <div className="widget-card">
+        <Feedback error title="Não foi possível carregar o painel" onRetry={refresh}>Verifique sua conexão e tente novamente para consultar os indicadores da escola.</Feedback>
       </div>
     );
   }
@@ -59,47 +61,48 @@ export default function DashboardHome() {
 
   return (
     <div className="dashboard-home">
+      <PageHeader icon={FaChartLine} title="Visão geral" description="Um resumo da frequência e das movimentações de hoje." />
       <div className="kpi-grid">
         <KpiCard
           title="Alunos Cadastrados"
           value={kpis.totalAlunos}
           icon={<FaUsers />}
-          color="#3b82f6"
+          color="#526b61"
           subtitle={`${kpis.totalTurmas} turmas ativas`}
         />
         <KpiCard
           title="Entradas Hoje"
           value={kpis.acessosHoje.entrada}
           icon={<FaArrowAltCircleRight />}
-          color="#10b981"
+          color="#008044"
           subtitle="Registros de entrada"
         />
         <KpiCard
           title="Saídas Hoje"
           value={kpis.acessosHoje.saida}
           icon={<FaArrowAltCircleLeft />}
-          color="#f59e0b"
+          color="#a86923"
           subtitle="Registros de saída"
         />
         <KpiCard
           title="Presentes Agora"
           value={kpis.presentesAgora}
           icon={<FaDoorOpen />}
-          color="#8b5cf6"
+          color="#008044"
           subtitle="Alunos dentro da escola"
         />
         <KpiCard
           title="Ausentes Hoje"
           value={kpis.naoEntraram}
           icon={<FaUserTimes />}
-          color="#ef4444"
+          color="#ad4848"
           subtitle="Alunos pendentes de entrada"
         />
         <KpiCard
-          title="Slots no Sensor"
+          title="Biometrias no sensor"
           value={`${kpis.slotsEmUso} / 127`}
           icon={<FaFingerprint />}
-          color="#06b6d4"
+          color="#526b61"
           subtitle={`${((kpis.slotsEmUso / 127) * 100).toFixed(0)}% da capacidade`}
         />
       </div>

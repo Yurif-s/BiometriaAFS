@@ -1,0 +1,31 @@
+.gestao-page { width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 24px; }
+.gestao-page > .card { margin: 0; }
+.gestao-page .card { border-radius: 16px; padding: 24px; border-color: var(--color-border); box-shadow: var(--shadow-card); }
+.gestao-page .card h3 { font-size: 18px; font-weight: 600; margin-bottom: 20px; }
+.gestao-page .feedback-panel { padding: 24px 16px; }
+.gestao-page .feedback-panel h3 { margin: 0; font-size: 16px; }
+.gestao-page .form-grid { gap: 16px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.gestao-page .input-group { min-width: 0; }
+.gestao-page .input-group label { font-size: 13px; margin-bottom: 8px; color: var(--color-text); }
+.gestao-page .input-group input, .gestao-page .input-group select { height: 44px; font-size: 14px; border-radius: 8px; padding: 0 12px; min-width: 0; }
+.gestao-page .salvar, .gestao-page .limpar { height: 44px; padding: 0 18px; font-size: 14px; border-radius: 8px; }
+.gestao-page .buttons { gap: 12px; margin-top: 20px; }
+.gestao-page .search-box { height: 44px; margin-bottom: 20px; border-radius: 8px; box-shadow: none; }
+.gestao-page .search-box input { min-width: 0; font-size: 14px; }
+.gestao-page th { font-size: 13px; padding: 12px 16px; }
+.gestao-page td { font-size: 14px; padding: 14px 16px; }
+.gestao-page .editar, .gestao-page .excluir { width: 38px; height: 38px; }
+.gestao-page .section-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.gestao-page .section-heading h3 { margin: 0; }
+.section-heading-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; color: var(--color-primary); background: var(--color-primary-soft); font-size: 18px; }
+.turma-form { margin-bottom: 16px; }
+.gestao-page .turma-actions { margin-top: 0; margin-bottom: 16px; }
+.table-scroll { overflow-x: auto; }
+@media (max-width: 650px) {
+  .gestao-page { gap: 20px; }
+  .gestao-page .card { padding: 18px; }
+  .gestao-page .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .gestao-page .span-2 { grid-column: auto; }
+}
+
+.gestao-page .table-loading { display: flex; flex-direction: column; align-items: center; padding: 40px; gap: 16px; color: var(--color-muted); }

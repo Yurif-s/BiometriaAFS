@@ -10,10 +10,13 @@ import TurmasManager from "../components/TurmasManager";
 import { useAlunos } from "../hooks/useAlunos";
 import { useTurmas } from "../hooks/useTurmas";
 import { useStatus } from "../hooks/useStatus";
+import PageHeader from '../components/PageHeader';
+import './GestaoPage.css';
+import Feedback from '../components/Feedback';
 
 export default function GestaoPage({ showToast }) {
-  const { turmas, turmaOptions, addTurma, deleteTurma, updateTurma, turmaExists } = useTurmas();
-  const { alunos, addAluno, updateAluno, deleteAluno, matriculaExists } = useAlunos(turmaOptions);
+  const { turmas, turmaOptions, addTurma, deleteTurma, updateTurma, turmaExists, loading: loadingTurmas, error: errorTurmas, refetch: refetchTurmas } = useTurmas();
+  const { alunos, addAluno, updateAluno, deleteAluno, matriculaExists, loading: loadingAlunos, error: errorAlunos, refetch: refetchAlunos } = useAlunos(turmaOptions);
   const { statusMessage, showStatus, showMsg } = useStatus();
 
   // Edit
@@ -97,27 +100,18 @@ export default function GestaoPage({ showToast }) {
   };
 
   return (
-    <main className="container" style={{ maxWidth: "100%", padding: 0 }}>
-      <section className="top-section">
-        <div className="aluno-title">
-          <div className="circle-icon">
-            <FaUsers />
-          </div>
-          <div>
-            <h2>Alunos</h2>
-            <p>Cadastre, edite, visualize e remova alunos</p>
-          </div>
-        </div>
-        <div
-          className="novo-btn"
-          style={{ cursor: "pointer" }}
+    <div className="gestao-page">
+      <PageHeader icon={FaUsers} title="Alunos e turmas" description="Organize as turmas e gerencie os cadastros da escola.">
+        <button type="button"
+          className="count-link"
+          disabled={loadingAlunos || !!errorAlunos}
           onClick={() =>
             document.getElementById("lista-alunos")?.scrollIntoView({ behavior: "smooth" })
           }
         >
-          Alunos cadastrados: {alunos.length}
-        </div>
-      </section>
+          <strong>{loadingAlunos || errorAlunos ? '—' : alunos.length}</strong> alunos cadastrados
+        </button>
+      </PageHeader>
 
       {showStatus && <StatusBanner message={statusMessage} />}
 
@@ -141,6 +135,10 @@ export default function GestaoPage({ showToast }) {
         />
       )}
 
+      {loadingAlunos || loadingTurmas ? <div className="card table-loading" role="status"><div className="spinner" />Carregando cadastros...</div>
+      : errorAlunos || errorTurmas ? <div className="card"><Feedback error title="Não foi possível carregar os cadastros" onRetry={() => { refetchAlunos(); refetchTurmas(); }}>
+        Verifique sua conexão e tente novamente. Seus cadastros não foram alterados.
+      </Feedback></div> : <>
       <TurmasManager
         turmas={turmas}
         onAdd={addTurma}
@@ -163,6 +161,7 @@ export default function GestaoPage({ showToast }) {
         onEdit={handleEditClick}
         onDelete={handleDeleteClick}
       />
-    </main>
+      </>}
+    </div>
   );
 }

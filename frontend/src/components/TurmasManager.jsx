@@ -3,6 +3,7 @@ import { useState } from "react";
 import { FaPlus, FaTrash, FaChalkboardTeacher, FaPen } from "react-icons/fa";
 import EditTurmaModal from "./EditTurmaModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
+import Feedback from './Feedback';
 
 const emptyForm = { nome: "", ano: new Date().getFullYear() };
 const emptyErrors = { nome: false, ano: false };
@@ -101,18 +102,19 @@ export default function TurmasManager({
     };
 
     return (
-        <section className="card" style={{ marginBottom: "28px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "24px" }}>
-                <div className="circle-icon" style={{ width: "48px", height: "48px", borderRadius: "14px" }}>
-                    <FaChalkboardTeacher style={{ fontSize: "22px", color: "white" }} />
+        <section className="card">
+            <div className="section-heading">
+                <div className="section-heading-icon">
+                    <FaChalkboardTeacher aria-hidden="true" />
                 </div>
                 <h3 style={{ margin: 0 }}>Gerenciar Turmas</h3>
             </div>
 
-            <div className="form-grid turma-grid" style={{ marginBottom: "20px" }}>
+            <div className="form-grid turma-grid turma-form">
                 <div className="input-group span-2">
-                    <label>Nome da Turma</label>
+                    <label htmlFor="turma-nome">Nome da turma</label>
                     <input
+                        id="turma-nome"
                         type="text"
                         placeholder="Ex: 1ª Informática"
                         value={formData.nome}
@@ -124,8 +126,9 @@ export default function TurmasManager({
                 </div>
 
                 <div className="input-group">
-                    <label>Ano</label>
+                    <label htmlFor="turma-ano">Ano</label>
                     <input
+                        id="turma-ano"
                         type="number"
                         placeholder="Ex: 2025"
                         value={formData.ano}
@@ -138,7 +141,7 @@ export default function TurmasManager({
                 </div>
             </div>
 
-            <div className="buttons" style={{ marginTop: 0, marginBottom: "28px" }}>
+            <div className="buttons turma-actions">
                 <button
                     type="button"
                     className={`salvar ${addAnim ? "clicked" : ""}`}
@@ -149,10 +152,9 @@ export default function TurmasManager({
             </div>
 
             {turmas.length === 0 ? (
-                <p style={{ color: "#888", textAlign: "center", padding: "20px 0" }}>
-                    Nenhuma turma cadastrada ainda.
-                </p>
+                <Feedback title="Nenhuma turma cadastrada">Adicione a primeira turma para começar a cadastrar os alunos.</Feedback>
             ) : (
+                <div className="table-scroll">
                 <table>
                     <thead>
                         <tr>
@@ -171,6 +173,7 @@ export default function TurmasManager({
                                         <button
                                             type="button"
                                             className="editar"
+                                            aria-label={`Editar turma ${turma.nome}`}
                                             onClick={() => openEditModal(turma)}
                                         >
                                             <FaPen />
@@ -178,6 +181,7 @@ export default function TurmasManager({
                                         <button
                                             type="button"
                                             className="excluir"
+                                            aria-label={`Excluir turma ${turma.nome}`}
                                             onClick={() => handleDeleteClick(turma)}
                                         >
                                             <FaTrash />
@@ -188,6 +192,7 @@ export default function TurmasManager({
                         ))}
                     </tbody>
                 </table>
+                </div>
             )}
 
             <EditTurmaModal
