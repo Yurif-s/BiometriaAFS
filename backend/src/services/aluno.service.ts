@@ -5,6 +5,7 @@ import {
   ConflictException,
   OnModuleDestroy,
   OnModuleInit,
+  Logger,
 } from '@nestjs/common';
 import { Aluno } from '@prisma/client';
 import { AlunoRepository, AlunoComTurma } from '../repositories/aluno.repository';
@@ -17,6 +18,7 @@ import { dataBR, inicioDoDiaBR, horarioNoDiaBR, interpretarHorario } from '../ut
 
 @Injectable()
 export class AlunoService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(AlunoService.name);
   private static readonly HORA_SAIDA_PADRAO = 16;
   private static readonly MINUTO_SAIDA_PADRAO = 35;
 
@@ -37,10 +39,20 @@ export class AlunoService implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit() {
     this.autoSaidaInterval = setInterval(() => {
-      void this.marcarSaidasPadraoSeNecessario();
+      void this.executarSaidasAutomaticas();
     }, 60_000);
 
-    void this.marcarSaidasPadraoSeNecessario();
+    void this.executarSaidasAutomaticas();
+  }
+
+  private async executarSaidasAutomaticas(): Promise<void> {
+    try {
+      await this.marcarSaidasPadraoSeNecessario();
+    } catch {
+      this.logger.error(
+        'Não foi possível processar as saídas automáticas. Verifique a conexão com o PostgreSQL. Nova tentativa em 60 segundos.',
+      );
+    }
   }
 
   onModuleDestroy() {
