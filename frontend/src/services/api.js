@@ -33,6 +33,6 @@ export const getDashboardFrequenciaTurma = (turmaId, data) => api.get(`/dashboar
 export const getDashboardExportCsv = (params) => api.get('/dashboard/export', { params, responseType: 'text' }).then(r => r.data);
 
 // Biometria
-export const iniciarCadastroBiometria = () => api.post('/alunos/biometria/iniciar-cadastro').then(r => r.data);
+export const iniciarCadastroBiometria = () => api.post('/alunos/biometria/iniciar-cadastro', {}, { timeout: 10000 }).then(r => r.data);
 export const cancelarCadastroBiometria = (id, reason = 'unknown') =>
-  api.post('/alunos/biometria/cancelar-cadastro', { id: Number(id), reason }).then(r => r.data);
+  api.post('/alunos/biometria/cancelar-cadastro', { id: Number(id), reason }, { timeout: 10000 }).then(r => r.data);

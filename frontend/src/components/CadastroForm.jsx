@@ -1,8 +1,10 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FaArrowAltCircleRight, FaFingerprint, FaTrash } from "react-icons/fa";
 import StatusBanner from "./StatusBanner";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { cancelarCadastroBiometria, iniciarCadastroBiometria } from "../services/api";
+
+import { criarColetaBiometrica } from "../utils/coletaBiometrica";
 
 const emptyForm = { nome: "", matricula: "", turma: "", biometria: "" };
 const emptyErrors = { nome: false, matricula: false, turma: false };
@@ -13,16 +15,23 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
   const [step, setStep] = useState(1);
   const [savingAnim, setSavingAnim] = useState(false);
   const [clearingAnim, setClearingAnim] = useState(false);
-  const [aguardandoBio, setAguardandoBio] = useState(false);
-  const [reservedBioId, setReservedBioId] = useState(null);
+  const [coleta, setColeta] = useState({ estado: 'idle', mensagem: '' });
+  const [salvando, setSalvando] = useState(false);
+  const sessao = useRef(null);
+  const aguardandoBio = ['starting', 'waiting', 'cancelling'].includes(coleta.estado);
 
-  const cancelarCadastroDigital = useCallback(async (id, reason = "unknown") => {
-    if (!id) return;
-    try {
-      await cancelarCadastroBiometria(id, reason);
-    } catch (error) {
-      console.error("Erro ao cancelar cadastro digital:", error);
-    }
+  useEffect(() => {
+    const atual = criarColetaBiometrica({
+      iniciar: iniciarCadastroBiometria,
+      cancelar: cancelarCadastroBiometria,
+      atualizar: setColeta,
+      confirmar: (id) => {
+        setFormData(prev => ({ ...prev, biometria: id }));
+        setStep(3);
+      },
+    });
+    sessao.current = atual;
+    return () => { atual.descartar(); sessao.current = null; };
   }, []);
 
   const handleInputChange = (field, value) => {
@@ -46,58 +55,39 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
     }
 
     setErrors(emptyErrors);
-    setStep(2);
+    setStep(formData.biometria ? 3 : 2);
   };
 
-  const handleBiometriaRecebida = useCallback(({ biometriaId, alunoNome }) => {
-    if (!aguardandoBio) return;
-    if (alunoNome) {
-      if (showToast) showToast(`Digital ja pertence a ${alunoNome}`, "error");
-      setAguardandoBio(false);
-      return;
-    }
+  const handleBiometriaRecebida = useCallback(data => sessao.current?.receber(data), []);
+  const handleBiometriaFalha = useCallback(() => sessao.current?.falhar(), []);
+  const connection = useWebSocket(handleBiometriaRecebida, handleBiometriaFalha);
+  useEffect(() => {
+    if (connection === 'disconnected') sessao.current?.desconectar();
+  }, [connection, coleta.estado]);
 
-    if (reservedBioId && Number(reservedBioId) !== Number(biometriaId)) {
-      cancelarCadastroDigital(reservedBioId, "id_mismatch");
-    }
-
-    setReservedBioId(biometriaId);
-    setFormData((prev) => ({ ...prev, biometria: biometriaId }));
-    setAguardandoBio(false);
-    setStep(3);
-  }, [aguardandoBio, cancelarCadastroDigital, reservedBioId, showToast]);
-
-  useWebSocket(handleBiometriaRecebida);
-
-  const handleCollectDigital = async () => {
-    setAguardandoBio(true);
-    try {
-      const data = await iniciarCadastroBiometria();
-      setReservedBioId(data.id);
-      if (showToast) showToast(`Sensor ativado! Grave a digital no ID: ${data.id}`, "info");
-    } catch (error) {
-      console.error(error);
-      if (showToast) showToast("Erro ao iniciar cadastro no sensor biometrico", "error");
-      setAguardandoBio(false);
-    }
-  };
+  const handleCollectDigital = () => sessao.current?.iniciar();
 
   const handleFinalSave = async () => {
+    if (salvando) return;
+    setSalvando(true);
     try {
       const success = await onSave(formData);
       if (success) {
-        setReservedBioId(null);
+        sessao.current?.concluir();
         setFormData(emptyForm);
         setStep(1);
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setSalvando(false);
     }
   };
 
   const handleClear = () => {
     setClearingAnim(true);
     setTimeout(() => setClearingAnim(false), 250);
+    void sessao.current?.cancelar();
     setFormData(emptyForm);
     setErrors(emptyErrors);
   };
@@ -188,6 +178,8 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
           <p className="biometric-text">
             Posicione o dedo no sensor para coletar a digital do aluno
           </p>
+          {coleta.mensagem && <p role={coleta.estado === 'error' ? 'alert' : 'status'}>{coleta.mensagem}</p>}
+          {connection !== 'connected' && <p role="status">Aguardando conexão com o servidor para iniciar a coleta.</p>}
           <div className="biometric-preview">
             <div className={`fingerprint-icon ${aguardandoBio ? "loading" : ""}`} aria-hidden="true">
               <FaFingerprint />
@@ -198,16 +190,12 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
               type="button"
               className="salvar"
               onClick={handleCollectDigital}
-              disabled={aguardandoBio}
+              disabled={aguardandoBio || connection !== 'connected'}
             >
-              {aguardandoBio ? "Aguardando Digital..." : "Coletar Digital"}
+              {aguardandoBio ? (coleta.estado === 'cancelling' ? 'Cancelando…' : 'Aguardando Digital…') : coleta.estado === 'error' ? 'Tentar novamente' : 'Coletar Digital'}
             </button>
-            <button type="button" className="limpar" onClick={() => {
-              if (reservedBioId) {
-                cancelarCadastroDigital(reservedBioId, "user_cancelled_voltar");
-                setReservedBioId(null);
-              }
-              setAguardandoBio(false);
+            <button type="button" className="limpar" disabled={coleta.estado === 'starting' || coleta.estado === 'cancelling'} onClick={async () => {
+              await sessao.current?.cancelar();
               setStep(1);
             }}>
               Voltar
@@ -235,11 +223,11 @@ export default function CadastroForm({ turmaOptions, onSave, showStatus, statusM
             <div className="status-chip">Digital cadastrada (ID: {formData.biometria})</div>
           </div>
           <div className="buttons">
-            <button type="button" className="limpar" onClick={() => setStep(1)}>
+            <button type="button" className="limpar" disabled={salvando} onClick={() => setStep(1)}>
               Editar
             </button>
-            <button type="button" className="salvar" onClick={handleFinalSave}>
-              Salvar Cadastro
+            <button type="button" className="salvar" disabled={salvando} onClick={handleFinalSave}>
+              {salvando ? "Salvando…" : "Salvar Cadastro"}
             </button>
           </div>
         </div>

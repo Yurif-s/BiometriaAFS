@@ -3,6 +3,7 @@ import {
   BadRequestException,
   NotFoundException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
 
 import { AlunoService } from '../src/services/aluno.service';
@@ -249,6 +250,29 @@ describe('AlunoService', () => {
         horario: new Date('2026-06-11T16:35:00-03:00'),
       });
     });
+  });
+
+  it('trata falhas da rotina automática e tenta novamente no próximo intervalo', async () => {
+    jest.useFakeTimers();
+    const log = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
+    const executar = jest.spyOn(service, 'marcarSaidasPadraoSeNecessario')
+      .mockRejectedValueOnce(new Error('ECONNREFUSED'))
+      .mockResolvedValue(undefined);
+    try {
+      service.onModuleInit();
+      await jest.advanceTimersByTimeAsync(0);
+      expect(log).toHaveBeenCalledWith(expect.stringContaining('PostgreSQL'));
+      await jest.advanceTimersByTimeAsync(60_000);
+      expect(executar).toHaveBeenCalledTimes(2);
+      service.onModuleDestroy();
+      await jest.advanceTimersByTimeAsync(60_000);
+      expect(executar).toHaveBeenCalledTimes(2);
+    } finally {
+      service.onModuleDestroy();
+      log.mockRestore();
+      executar.mockRestore();
+      jest.useRealTimers();
+    }
   });
 
   // =========================
