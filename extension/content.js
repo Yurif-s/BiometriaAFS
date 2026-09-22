@@ -29,6 +29,19 @@
     // Delay simples
     const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+    // Data de hoje no fuso do Ceará (America/Fortaleza), em YYYY-MM-DD.
+    // Usada como valor padrão do seletor de data do painel.
+    function dataFortalezaHoje() {
+        const parts = new Intl.DateTimeFormat("en-CA", {
+            timeZone: "America/Fortaleza",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+        }).formatToParts(new Date());
+        const part = type => parts.find(p => p.type === type).value;
+        return `${part("year")}-${part("month")}-${part("day")}`;
+    }
+
     // Verifica se está na tela de frequência
     const isFreq = () => SEL_FREQ.test(location.pathname + location.search);
 
@@ -122,15 +135,18 @@
         }
     }
 
-    // Carrega faltosos de uma turma específica
-    async function carregarFaltososTurma(turmaId) {
+    // Carrega faltosos de uma turma específica em uma data específica
+    // (data no formato YYYY-MM-DD; se omitida, a API assume o dia atual)
+    async function carregarFaltososTurma(turmaId, data) {
 
         if (!turmaId) {
             return false;
         }
 
+        const query = data ? `?data=${encodeURIComponent(data)}` : "";
+
         const dados = await fetchApi(
-            `/dashboard/turmas/${encodeURIComponent(turmaId)}/frequencia`
+            `/dashboard/turmas/${encodeURIComponent(turmaId)}/frequencia${query}`
         );
 
         return carregarBaseJson(dados);
@@ -486,13 +502,26 @@
     background:#ef4444
 }
 
-#ak-panel select{
+#ak-panel select,
+#ak-panel input[type="date"]{
     width:calc(100% - 20px);
-    margin:10px;
+    margin:10px 10px 0;
     border:1px solid #ccc;
     border-radius:8px;
     padding:8px 10px;
-    font-size:13px
+    font-size:13px;
+    box-sizing:border-box
+}
+
+#ak-panel input[type="date"]{
+    margin-bottom:10px
+}
+
+#ak-panel label.ak-field-label{
+    display:block;
+    margin:0 10px;
+    font-size:11px;
+    color:#666
 }
 
 #ak-panel .status{
@@ -531,6 +560,9 @@
     </option>
 </select>
 
+<label class="ak-field-label" for="ak-data-select">Data da chamada</label>
+<input type="date" id="ak-data-select" value="${dataFortalezaHoje()}" />
+
 <div class="status">
     Salvos: 0
 </div>`;
@@ -548,14 +580,15 @@
             await esperaCarregar();
 
             const selectedTurma = $("#ak-turma-select")?.value;
+            const selectedData = $("#ak-data-select")?.value || dataFortalezaHoje();
 
             if (selectedTurma) {
 
-                const ok = await carregarFaltososTurma(selectedTurma);
+                const ok = await carregarFaltososTurma(selectedTurma, selectedData);
 
                 if (!ok) {
 
-                    alert("Não foi possível carregar faltosos dessa turma.");
+                    alert("Não foi possível carregar faltosos dessa turma nessa data.");
                     return;
                 }
 
@@ -597,9 +630,10 @@
         const base = window.BASE_TEMP || [];
         const select = $("#ak-turma-select");
         const selectedName = select?.selectedOptions?.[0]?.textContent;
+        const selectedData = $("#ak-data-select")?.value;
 
         s.textContent = base.length
-            ? `${selectedName ? selectedName + " - " : ""}Carregados: ${base.length}`
+            ? `${selectedName ? selectedName + " - " : ""}${selectedData ? selectedData + " - " : ""}Carregados: ${base.length}`
             : "Nenhum carregado";
     }
 
