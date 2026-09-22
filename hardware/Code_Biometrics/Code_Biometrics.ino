@@ -28,8 +28,8 @@ SemaphoreHandle_t displayMutex;
 #define TXD_BIO        18
 
 // DEFINIÇÃO WIFI
-const char* ssid     = "ASUS Vivobook Go 14/15";
-const char* password = "123456789";
+const char* ssid     = "SecretariaAFS";
+const char* password = "Secretariaafs123";
 
 volatile bool wifiConectado = false;
 
