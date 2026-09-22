@@ -74,14 +74,7 @@
 
         try {
 
-            const url = `${API_BASE}/turmas`;
-            console.log("REQUISIÇÃO PARA:", url);
-
             const response = await fetchApi("/turmas");
-
-            console.log("RESPOSTA TURMAS:", response);
-            console.log("TIPO DA RESPOSTA:", typeof response);
-            console.log("É ARRAY?:", Array.isArray(response));
 
             if (Array.isArray(response) && response.length) {
 
@@ -97,15 +90,12 @@
 
         } catch (err) {
 
-            console.error("ERRO AO BUSCAR TURMAS:", err);
-            console.error("URL tentada:", `${API_BASE}/turmas`);
+            console.error("Erro ao buscar turmas:", err);
 
             if (status) {
                 status.textContent = `Erro: ${err.message || err}`;
             }
         }
-
-        console.log("TURMAS PROCESSADAS:", turmas);
 
         window.__ak_turmas = Array.isArray(turmas) ? turmas : [];
 
@@ -662,21 +652,16 @@
         return true;
     }
 
-    console.log("CONTENT SCRIPT CARREGADO");
-
     // Listener de mensagens da extensão
     chrome.runtime.onMessage.addListener(
 
         (msg, sender, sendResponse) => {
-
-            console.log("MENSAGEM RECEBIDA:", msg);
 
             // Inicializa painel
             if (msg.type === "INIT_FALTOSOS") {
 
                 (async () => {
 
-                    console.log("INICIANDO PAINEL");
                     await esperaCarregar();
                     montarUI();
                     sendResponse({ ok: true });

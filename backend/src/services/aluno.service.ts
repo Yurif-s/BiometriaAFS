@@ -167,8 +167,6 @@ export class AlunoService implements OnModuleInit, OnModuleDestroy {
   }
 
   queueDeletion(id: number) {
-    console.log(`[AlunoService] queueDeletion chamado para o ID: ${id}`);
-    console.trace('[AlunoService] Rastreio de quem chamou queueDeletion:');
     if (!this.pendingDeletions.includes(id)) {
       this.pendingDeletions.push(id);
     }
