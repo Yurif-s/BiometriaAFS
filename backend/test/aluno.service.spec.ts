@@ -206,6 +206,37 @@ describe('AlunoService', () => {
         undefined
       );
     });
+
+    it('deve ignorar uma segunda leitura da mesma digital chegando quase ao mesmo tempo (evita Entrada duplicada)', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-06-11T07:20:00-03:00'));
+      const alunoMock = { id: 1, nome: 'João', biometria: 123, entrada: null, saida: null, turma_id: 1, turma: { id: 1, nome: 'Turma A' } } as any;
+      const updatedAlunoMock = {
+        ...alunoMock,
+        entrada: new Date('2026-06-11T07:20:00-03:00'),
+        saida: new Date('2026-06-11T16:35:00-03:00'),
+      };
+      alunoRepository.findByBiometria.mockResolvedValue(alunoMock);
+      alunoRepository.update.mockResolvedValue(updatedAlunoMock);
+
+      // Duas leituras "simultâneas" da mesma digital, sem avançar o relógio —
+      // simula a corrida de duas requisições chegando quase ao mesmo tempo.
+      const [primeiro, segundo] = await Promise.all([
+        service.registrarLeitura(123),
+        service.registrarLeitura(123),
+      ]);
+
+      expect(primeiro.aluno).toEqual(updatedAlunoMock);
+      expect(segundo.aluno).toEqual(alunoMock);
+
+      // Apenas a primeira leitura deve ter gravado Entrada/Saída padrão.
+      expect(alunoRepository.update).toHaveBeenCalledTimes(1);
+      expect(acessoRepository.create).toHaveBeenCalledTimes(2); // Entrada + Saída padrão
+      expect(acessoRepository.create).toHaveBeenCalledWith({
+        aluno_id: 1,
+        tipo: 'Entrada',
+        horario: new Date('2026-06-11T07:20:00-03:00'),
+      });
+    });
   });
 
   describe('marcarSaidasPadraoSeNecessario', () => {
