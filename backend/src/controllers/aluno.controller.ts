@@ -64,7 +64,6 @@ export class AlunoController {
   async cancelarCadastro(
     @Body() body: CancelarBiometriaDto,
   ): Promise<void> {
-    console.log(`[AlunoController] Recebeu cancelar-cadastro para o ID: ${body.id} | Motivo: ${body.reason || 'não informado'}`);
     return this.alunoService.cancelarCadastro(body.id);
   }
 
