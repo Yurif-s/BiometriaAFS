@@ -11,12 +11,8 @@
   "host_permissions": [
     "https://professor.seduc.ce.gov.br/*",
     "https://biometriaafs.onrender.com/*",
-    "https://biometria-afs.vercel.app/*",
-    "https://biometriaafs.vercel.app/*",
     "http://localhost:3000/*",
-    "http://localhost/*",
-    "http://127.0.0.1/*",
-    "file:///*"
+    "http://127.0.0.1:3000/*"
   ],
   "action": {
     "default_popup": "/popup/popup.html",
@@ -25,8 +21,7 @@
   "content_scripts": [
     {
       "matches": [
-        "https://professor.seduc.ce.gov.br/*",
-        "file:///C:/Users/joaom/OneDrive/%C3%81rea%20de%20Trabalho/ScriptBiometriaAFS/index.html"
+        "https://professor.seduc.ce.gov.br/*"
       ],
       "js": [
         "config.js","content.js"

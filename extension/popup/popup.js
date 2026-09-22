@@ -1,4 +1,4 @@
-﻿const btn = document.getElementById("init");
+const btn = document.getElementById("init");
 const status = document.getElementById("status");
 
 async function getActiveProfessorTab() {
@@ -7,7 +7,7 @@ async function getActiveProfessorTab() {
 }
 
 function isAllowedPage(url) {
-    return url.includes("professor.seduc.ce.gov.br") || url.includes("/ScriptBiometriaAFS/index.html");
+    return url.includes("professor.seduc.ce.gov.br");
 }
 
 async function executeContentScript(tabId) {
