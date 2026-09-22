@@ -30,6 +30,14 @@ export class AlunoService implements OnModuleInit, OnModuleDestroy {
   private pendingDeletions: number[] = [];
   private reservedIds = new Map<number, number>(); // biometriaId -> timestamp
 
+  // Evita que duas leituras da mesma digital, disparadas quase ao mesmo
+  // tempo (ex.: dedo mantido no sensor, retry de rede, chamadas de teste
+  // em sequência rápida), leiam o mesmo estado "sem entrada ainda" do banco
+  // antes que a primeira grave — o que geraria duas Entradas em vez de uma
+  // Entrada seguida de Saída.
+  private ultimaLeituraProcessadaEm = new Map<number, number>(); // biometriaId -> timestamp
+  private static readonly DEBOUNCE_LEITURA_MS = 3000;
+
   constructor(
     private readonly alunoRepository: AlunoRepository,
     private readonly turmaRepository: TurmaRepository,
@@ -254,6 +262,23 @@ export class AlunoService implements OnModuleInit, OnModuleDestroy {
   }
 
   async registrarLeitura(biometria: number) {
+    // Checagem e marcação síncronas: fecham a janela de corrida antes de
+    // qualquer `await`, então duas chamadas quase simultâneas não podem
+    // passar ambas por aqui.
+    const agoraMs = Date.now();
+    const ultimaLeitura = this.ultimaLeituraProcessadaEm.get(biometria);
+    const leituraDuplicada =
+      ultimaLeitura !== undefined && agoraMs - ultimaLeitura < AlunoService.DEBOUNCE_LEITURA_MS;
+    this.ultimaLeituraProcessadaEm.set(biometria, agoraMs);
+
+    if (leituraDuplicada) {
+      this.logger.warn(
+        `Leitura duplicada ignorada para biometria ${biometria} (dentro de ${AlunoService.DEBOUNCE_LEITURA_MS}ms da anterior).`,
+      );
+      const alunoAtual = await this.alunoRepository.findByBiometria(biometria);
+      return { encontrado: !!alunoAtual, aluno: alunoAtual ?? undefined };
+    }
+
     const aluno = await this.alunoRepository.findByBiometria(biometria);
 
     let updatedAluno = aluno;
