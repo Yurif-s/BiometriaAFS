@@ -1,7 +1,23 @@
 import React from "react";
 import { FaCheck, FaTimes } from "react-icons/fa";
 import { HORARIOS_AULAS } from "../../constants/horariosAulas";
+import { horarioBR } from "../../utils/datas";
 import "./PeriodoTable.css";
+
+const formatHorarioRelatorio = (valor) => {
+  if (!valor) return "--";
+
+  if (typeof valor === "string") {
+    const texto = valor.trim();
+    if (/^\d{2}:\d{2}(:\d{2})?$/.test(texto)) return texto;
+    const date = new Date(texto);
+    if (Number.isFinite(date.getTime())) return horarioBR(date);
+    return texto;
+  }
+
+  if (valor instanceof Date) return horarioBR(valor);
+  return String(valor);
+};
 
 export default function PeriodoTable({ data = [] }) {
   return (
@@ -50,8 +66,8 @@ export default function PeriodoTable({ data = [] }) {
                     {row.status}
                   </span>
                 </td>
-                <td>{row.entrada || "--"}</td>
-                <td>{row.saida || "--"}</td>
+                <td>{formatHorarioRelatorio(row.entrada)}</td>
+                <td>{formatHorarioRelatorio(row.saida)}</td>
                 {HORARIOS_AULAS.map((a) => {
                   const isAusente = row.periodosAusentes.includes(a.periodo);
                   return (
