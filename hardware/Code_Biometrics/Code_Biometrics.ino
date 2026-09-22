@@ -14,6 +14,11 @@
 #include <freertos/queue.h>
 #include <freertos/semphr.h>
 
+// Credenciais de Wi-Fi: ficam em secrets.h (fora do controle de versão).
+// Copie secrets.example.h para secrets.h e preencha com a rede real antes
+// de compilar.
+#include "secrets.h"
+
 // DEFINIÇÃO DISPLAY
 TFT_eSPI tft = TFT_eSPI();
 
@@ -26,10 +31,6 @@ SemaphoreHandle_t displayMutex;
 #define LED_BIOMETRIA  36
 #define RXD_BIO        17
 #define TXD_BIO        18
-
-// DEFINIÇÃO WIFI
-const char* ssid     = "ASUS Vivobook Go 14/15";
-const char* password = "123456789";
 
 volatile bool wifiConectado = false;
 
