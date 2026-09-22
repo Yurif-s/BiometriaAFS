@@ -19,6 +19,11 @@ test('horário digitado segue UTC-3 mesmo quando o computador está em outro fus
   assert.equal(horarioBR('2026-09-15T10:20:00Z'), '07:20:00');
 });
 
+test('horários sem offset são interpretados como hora do Ceará', () => {
+  assert.equal(horarioBR('2026-09-15T07:20:00'), '07:20:00');
+  assert.equal(dataBR('2026-09-15'), '2026-09-15');
+});
+
 test('datas vazias e impossíveis não são convertidas silenciosamente', () => {
   for (const value of ['', '2026-02-30T07:20', '2026-09-15', '2026-09-15T25:00']) {
     assert.throws(() => deInputDataHora(value));
