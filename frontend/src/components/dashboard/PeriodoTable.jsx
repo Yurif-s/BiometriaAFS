@@ -10,9 +10,10 @@ const formatHorarioRelatorio = (valor) => {
   if (typeof valor === "string") {
     const texto = valor.trim();
     if (/^\d{2}:\d{2}(:\d{2})?$/.test(texto)) return texto;
-    const date = new Date(texto);
-    if (Number.isFinite(date.getTime())) return horarioBR(date);
-    return texto;
+    // horarioBR já interpreta strings sem offset como horário do Ceará
+    // (America/Fortaleza), em vez do fuso do navegador de quem acessa.
+    const formatado = horarioBR(texto);
+    return formatado === "Invalid Date" ? texto : formatado;
   }
 
   if (valor instanceof Date) return horarioBR(valor);
