@@ -207,7 +207,7 @@ describe('AlunoService', () => {
       );
     });
 
-    it('deve ignorar uma segunda leitura da mesma digital chegando quase ao mesmo tempo (evita Entrada duplicada)', async () => {
+    it('deve ignorar uma segunda leitura concorrente da mesma digital (evita Entrada duplicada)', async () => {
       jest.useFakeTimers().setSystemTime(new Date('2026-06-11T07:20:00-03:00'));
       const alunoMock = { id: 1, nome: 'João', biometria: 123, entrada: null, saida: null, turma_id: 1, turma: { id: 1, nome: 'Turma A' } } as any;
       const updatedAlunoMock = {
@@ -218,8 +218,9 @@ describe('AlunoService', () => {
       alunoRepository.findByBiometria.mockResolvedValue(alunoMock);
       alunoRepository.update.mockResolvedValue(updatedAlunoMock);
 
-      // Duas leituras "simultâneas" da mesma digital, sem avançar o relógio —
-      // simula a corrida de duas requisições chegando quase ao mesmo tempo.
+      // Duas leituras da mesma digital disparadas ao mesmo tempo (ambas
+      // iniciam antes de qualquer uma terminar) — simula a corrida de duas
+      // requisições concorrentes.
       const [primeiro, segundo] = await Promise.all([
         service.registrarLeitura(123),
         service.registrarLeitura(123),
@@ -236,6 +237,51 @@ describe('AlunoService', () => {
         tipo: 'Entrada',
         horario: new Date('2026-06-11T07:20:00-03:00'),
       });
+    });
+
+    it('não deve ignorar uma segunda leitura real chegando logo após a primeira terminar (Entrada seguida de Saída)', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-06-11T07:20:00-03:00'));
+      const alunoMock = { id: 1, nome: 'João', biometria: 123, entrada: null, saida: null, turma_id: 1, turma: { id: 1, nome: 'Turma A' } } as any;
+      const apósEntrada = {
+        ...alunoMock,
+        entrada: new Date('2026-06-11T07:20:00-03:00'),
+        saida: new Date('2026-06-11T16:35:00-03:00'),
+      };
+      const apósSaida = { ...apósEntrada, saida: new Date('2026-06-11T07:20:05-03:00') };
+
+      alunoRepository.findByBiometria.mockResolvedValueOnce(alunoMock);
+      alunoRepository.update.mockResolvedValueOnce(apósEntrada);
+
+      // Primeiro toque: registra a Entrada e aguarda terminar por completo,
+      // liberando a trava de "leitura em andamento".
+      const primeiro = await service.registrarLeitura(123);
+      expect(primeiro.aluno).toEqual(apósEntrada);
+
+      // Segundo toque, poucos segundos depois — não deve ser tratado como
+      // leitura concorrente/duplicada, já que a primeira já terminou.
+      jest.setSystemTime(new Date('2026-06-11T07:20:05-03:00'));
+      alunoRepository.findByBiometria.mockResolvedValueOnce(apósEntrada);
+      alunoRepository.update.mockResolvedValueOnce(apósSaida);
+      acessoRepository.findSaidaByAlunoHorario.mockResolvedValueOnce({
+        id: 10,
+        aluno_id: 1,
+        tipo: 'Saída',
+        horario: new Date('2026-06-11T16:35:00-03:00'),
+      } as any);
+
+      const segundo = await service.registrarLeitura(123);
+
+      expect(segundo.aluno).toEqual(apósSaida);
+      expect(biometriaGateway.emitirBiometriaLida).toHaveBeenLastCalledWith(
+        123,
+        'João',
+        undefined,
+        'Turma A',
+        apósSaida.entrada,
+        apósSaida.saida,
+        'Saída',
+        new Date('2026-06-11T07:20:05-03:00'),
+      );
     });
   });
 
