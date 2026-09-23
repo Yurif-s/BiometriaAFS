@@ -493,7 +493,8 @@ enum EstadoBio {
 
 EstadoBio estadoAtual       = AGUARDANDO_DEDO;
 unsigned long inicioEstado  = 0;
-#define TEMPO_RESULTADO_MS  2500 
+#define TEMPO_RESULTADO_MS      2500   // tempo mínimo exibindo o resultado
+#define TEMPO_RESULTADO_MAX_MS  6000   // segurança: libera mesmo sem remoção do dedo
 
 // SETUP
 void setup() {
@@ -579,8 +580,18 @@ void loop() {
 
   // Máquina de estados do resultado
   if (estadoAtual == MOSTRANDO_RESULTADO) {
-    if (millis() - inicioEstado >= TEMPO_RESULTADO_MS) {
-      // Tempo de exibição esgotado — volta a aguardar
+    unsigned long decorrido = millis() - inicioEstado;
+    bool tempoMinimoPassou = decorrido >= TEMPO_RESULTADO_MS;
+    bool tempoMaximoEstourou = decorrido >= TEMPO_RESULTADO_MAX_MS;
+
+    // Só volta a escanear depois que o dedo for removido do sensor — caso
+    // contrário, ao voltar para AGUARDANDO_DEDO com o dedo ainda encostado,
+    // a próxima leitura acontece automaticamente (sem o aluno tocar de
+    // novo) e é registrada como um segundo acesso (Saída), fazendo o
+    // terminal "trocar sozinho" de Entrada para Saída poucos segundos
+    // depois. O tempoMaximoEstourou é só uma segurança para não travar
+    // indefinidamente se o dedo nunca sair.
+    if ((tempoMinimoPassou && finger.getImage() == FINGERPRINT_NOFINGER) || tempoMaximoEstourou) {
       digitalWrite(LED_BIOMETRIA, LOW);
       telaAguardando();
       estadoAtual = AGUARDANDO_DEDO;
