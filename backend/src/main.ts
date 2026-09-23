@@ -5,8 +5,6 @@ import { ValidationPipe } from '@nestjs/common';
 import { corsOriginValidator } from './config/cors.config';
 import 'dotenv/config';
 
-process.env.TZ = 'America/Sao_Paulo';
-
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
