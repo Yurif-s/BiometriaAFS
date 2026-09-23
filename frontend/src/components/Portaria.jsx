@@ -1,38 +1,56 @@
-import React, { useState } from 'react';
-import { FaCheckCircle, FaUser, FaIdBadge, FaDoorOpen, FaClock, FaSignOutAlt, FaSignInAlt, FaFingerprint } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import { FaSignOutAlt, FaDoorOpen, FaUser } from 'react-icons/fa';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { horarioBR } from '../utils/datas';
+import { getAcessosHoje } from '../services/api';
 import { Link } from 'react-router-dom';
 import ConnectionStatus from './ConnectionStatus';
 import './Portaria.css';
 
+const MAX_SAIDAS = 10;
+
 export default function Portaria() {
-  const [alunoInfo, setAlunoInfo] = useState(null);
+  const [saidas, setSaidas] = useState([]);
 
-  // Quando a biometria for lida com sucesso (liberado/entrada)
+  // Carrega as saídas de hoje já registradas ao abrir a página
+  useEffect(() => {
+    getAcessosHoje()
+      .then((data) => {
+        const somenteSaidas = data
+          .filter((acesso) => acesso.tipo === 'Saída' && new Date(acesso.horario) <= new Date())
+          .slice(0, MAX_SAIDAS)
+          .map((acesso) => ({
+            id: acesso.id,
+            nome: acesso.aluno?.nome,
+            matricula: acesso.aluno?.matricula,
+            turma: acesso.aluno?.turma?.nome,
+            horario: horarioBR(acesso.horario),
+          }));
+        setSaidas(somenteSaidas);
+      })
+      .catch((err) => console.error('Erro ao carregar saídas recentes', err));
+  }, []);
+
+  // A portaria só acompanha saídas — leituras de Entrada são ignoradas aqui.
   const handleBiometriaLida = (data) => {
-    const { alunoNome, alunoMatricula, alunoTurma, tipoAcesso, horarioAcesso } = data;
+    if (data.tipoAcesso !== 'Saída' || !data.alunoNome) return;
 
-    if (alunoNome) {
-      setAlunoInfo({
-        nome: alunoNome,
-        matricula: alunoMatricula,
-        turma: alunoTurma,
-        tipo: tipoAcesso || 'Entrada',
-        horario: horarioBR(horarioAcesso || new Date()),
-      });
-    }
+    const novaSaida = {
+      id: `live-${Date.now()}-${Math.random()}`,
+      nome: data.alunoNome,
+      matricula: data.alunoMatricula,
+      turma: data.alunoTurma,
+      horario: horarioBR(data.horarioAcesso || new Date()),
+      isNew: true,
+    };
+
+    setSaidas((prev) => [novaSaida, ...prev.slice(0, MAX_SAIDAS - 1)]);
   };
 
-  // Ignorar falhas na portaria, o zelador só precisa ver quem passou
+  // Ignorar falhas na portaria, o zelador só precisa ver quem saiu
   const handleBiometriaFalha = () => {};
 
   const connection = useWebSocket(handleBiometriaLida, handleBiometriaFalha);
-
-  const handleConfirmar = () => {
-    // Animação de saída antes de limpar o estado poderia ser feita aqui
-    setAlunoInfo(null);
-  };
 
   return (
     <div className="portaria-container">
@@ -45,60 +63,36 @@ export default function Portaria() {
       </div>
 
       <div className="portaria-content">
-        {!alunoInfo ? (
-          <div className="waiting-card">
-            <div className="icon-wrapper glass-icon">
-              <FaFingerprint />
-            </div>
-            <h2>Acompanhamento de acessos</h2>
-            <p>Os dados do aluno aparecerão aqui assim que a digital for reconhecida no terminal.</p>
-            <Link className="portaria-back" to="/">Voltar ao terminal</Link>
+        <div className="saidas-card">
+          <div className="saidas-header">
+            <FaSignOutAlt className="saidas-icon" />
+            <h2>Saídas recentes</h2>
           </div>
-        ) : (
-          <div className="student-card pop-in">
-            <div className={`status-badge-icon ${alunoInfo.tipo === 'Saída' ? 'badge-saida' : 'badge-entrada'}`}>
-              {alunoInfo.tipo === 'Saída' ? <FaSignOutAlt /> : <FaSignInAlt />}
-              {alunoInfo.tipo} Registrada
-            </div>
-            
-            <div className="student-avatar">
-              <FaUser />
-            </div>
-            
-            <h1 className="student-name">{alunoInfo.nome}</h1>
-            
-            <div className="info-grid">
-              <div className="info-item">
-                <FaDoorOpen className="info-icon" />
-                <div className="info-text">
-                  <span>Turma</span>
-                  <strong>{alunoInfo.turma}</strong>
-                </div>
-              </div>
-              
-              <div className="info-item">
-                <FaIdBadge className="info-icon" />
-                <div className="info-text">
-                  <span>Matrícula</span>
-                  <strong>{alunoInfo.matricula}</strong>
-                </div>
-              </div>
 
-              <div className="info-item">
-                <FaClock className="info-icon" />
-                <div className="info-text">
-                  <span>Horário</span>
-                  <strong>{alunoInfo.horario}</strong>
-                </div>
-              </div>
+          {saidas.length === 0 ? (
+            <div className="saidas-empty">
+              <FaDoorOpen className="saidas-empty-icon" />
+              <p>Nenhuma saída registrada ainda hoje.</p>
             </div>
-
-            <button className="confirm-btn" onClick={handleConfirmar}>
-              <FaCheckCircle />
-              Confirmar Visualização
-            </button>
-          </div>
-        )}
+          ) : (
+            <div className="saidas-list">
+              {saidas.map((saida) => (
+                <div key={saida.id} className={`saida-item ${saida.isNew ? 'pop-in' : ''}`}>
+                  <div className="saida-avatar">
+                    <FaUser />
+                  </div>
+                  <div className="saida-info">
+                    <span className="saida-nome">{saida.nome}</span>
+                    <span className="saida-meta">
+                      {saida.turma || 'Sem Turma'} · RA: {saida.matricula}
+                    </span>
+                  </div>
+                  <span className="saida-horario">{saida.horario}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

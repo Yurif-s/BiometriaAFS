@@ -19,48 +19,79 @@
 .portaria-brand .logo-text { font-size: 22px; font-weight: 700; color: var(--color-text); text-decoration: none; }
 .portaria-brand .logo-text span { color: var(--color-primary); }
 .portaria-label { padding-left: 16px; border-left: 1px solid var(--color-border); color: var(--color-muted); font-size: 14px; }
-.portaria-content { flex: 1; display: flex; justify-content: center; align-items: center; padding: 32px 24px; }
-.waiting-card, .student-card {
+.portaria-content { flex: 1; display: flex; justify-content: center; padding: 32px 24px; }
+
+.saidas-card {
   background: white;
   border: 1px solid var(--color-border);
   border-radius: 16px;
   box-shadow: var(--shadow-card);
   width: 100%;
   max-width: 560px;
-  padding: 44px 32px;
+  max-height: calc(100vh - 140px);
+  display: flex;
+  flex-direction: column;
+}
+.saidas-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 28px;
+  border-bottom: 1px solid var(--color-border);
+}
+.saidas-icon { font-size: 22px; color: #92521b; }
+.saidas-header h2 { font-size: 20px; font-weight: 600; color: var(--color-text); }
+
+.saidas-empty {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 56px 32px;
   text-align: center;
 }
-.waiting-card { gap: 20px; }
-.glass-icon {
-  width: 96px; height: 96px; display: grid; place-items: center;
+.saidas-empty-icon {
+  width: 72px; height: 72px; display: grid; place-items: center;
   border-radius: 50%; background: var(--color-primary-soft); color: var(--color-primary);
-  border: 1px solid #cce5d6; font-size: 42px;
+  border: 1px solid #cce5d6; font-size: 30px;
 }
-.waiting-card h2 { font-size: 24px; font-weight: 600; color: var(--color-text); }
-.waiting-card p { max-width: 390px; font-size: 15px; line-height: 1.7; color: var(--color-muted); }
-.portaria-back { color: #166640; font-size: 14px; text-underline-offset: 4px; padding: 8px; }
-.status-badge-icon { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 600; margin-bottom: 24px; }
-.badge-entrada { color: #166640; background: #eaf5ee; border: 1px solid #cce5d6; }
-.badge-saida { color: #92521b; background: #fff4e5; border: 1px solid #f0d9b5; }
-.student-avatar { width: 88px; height: 88px; border-radius: 50%; background: var(--color-primary-soft); color: var(--color-primary); display: grid; place-items: center; font-size: 36px; margin-bottom: 16px; }
-.student-name { font-size: 28px; line-height: 1.3; overflow-wrap: anywhere; margin-bottom: 24px; }
-.info-grid { width: 100%; display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
-.info-item { display: flex; align-items: center; gap: 14px; background: #f7f9f8; border: 1px solid var(--color-border); border-radius: 10px; padding: 14px 16px; text-align: left; }
-.info-icon { font-size: 20px; color: var(--color-primary); flex-shrink: 0; }
-.info-text { display: flex; flex-direction: column; min-width: 0; }
-.info-text span { font-size: 12px; color: var(--color-muted); }
-.info-text strong { font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
-.confirm-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; border: 0; border-radius: 10px; padding: 14px; background: var(--color-primary); color: white; font-size: 15px; font-weight: 600; cursor: pointer; }
-.confirm-btn:hover { background: #007a3a; }
+.saidas-empty p { max-width: 320px; font-size: 15px; line-height: 1.7; color: var(--color-muted); }
+
+.saidas-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.saida-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #f7f9f8;
+  border: 1px solid var(--color-border);
+}
+.saida-avatar {
+  width: 44px; height: 44px; flex-shrink: 0; border-radius: 50%;
+  background: #fff4e5; color: #92521b; display: grid; place-items: center; font-size: 18px;
+}
+.saida-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.saida-nome { font-weight: 600; font-size: 15px; color: var(--color-text); overflow-wrap: anywhere; }
+.saida-meta { font-size: 12px; color: var(--color-muted); margin-top: 2px; }
+.saida-horario { font-size: 14px; font-weight: 600; color: #92521b; flex-shrink: 0; }
+
 .pop-in { animation: portaria-appear 0.2s ease-out; }
-@keyframes portaria-appear { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes portaria-appear { from { opacity: 0; transform: translateY(-8px); background: #fff4e5; } to { opacity: 1; transform: translateY(0); } }
+
 @media (max-width: 600px) {
   .portaria-header { padding: 18px; gap: 12px; }
   .portaria-content { padding: 24px 16px; }
-  .waiting-card, .student-card { padding: 32px 20px; }
-  .waiting-card h2 { font-size: 22px; }
-  .student-name { font-size: 24px; }
+  .saidas-card { max-height: calc(100vh - 120px); }
+  .saidas-header { padding: 20px; }
+  .saidas-header h2 { font-size: 18px; }
 }
