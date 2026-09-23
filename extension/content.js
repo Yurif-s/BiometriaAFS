@@ -30,7 +30,8 @@
     const sleep = ms => new Promise(r => setTimeout(r, ms));
 
     // Data de hoje no fuso do Ceará (America/Fortaleza), em YYYY-MM-DD.
-    // Usada como valor padrão do seletor de data do painel.
+    // Usada como fallback quando o campo de data do Professor Online não
+    // é encontrado ou está com um valor inesperado.
     function dataFortalezaHoje() {
         const parts = new Intl.DateTimeFormat("en-CA", {
             timeZone: "America/Fortaleza",
@@ -40,6 +41,18 @@
         }).formatToParts(new Date());
         const part = type => parts.find(p => p.type === type).value;
         return `${part("year")}-${part("month")}-${part("day")}`;
+    }
+
+    // Lê a data selecionada no campo #data do Professor Online
+    // (ex.: <input id="data" value="23/09/2026">, formato DD/MM/YYYY) e
+    // converte para YYYY-MM-DD, formato esperado pela API. Retorna null se
+    // o campo não existir ou tiver um valor em formato inesperado.
+    function obterDataSeduc() {
+        const valor = document.querySelector("#data")?.value?.trim();
+        const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(valor || "");
+        if (!m) return null;
+        const [, dia, mes, ano] = m;
+        return `${ano}-${mes}-${dia}`;
     }
 
     // Verifica se está na tela de frequência
@@ -492,8 +505,7 @@
     background:#ef4444
 }
 
-#ak-panel select,
-#ak-panel input[type="date"]{
+#ak-panel select{
     width:calc(100% - 20px);
     margin:10px 10px 0;
     border:1px solid #ccc;
@@ -503,15 +515,14 @@
     box-sizing:border-box
 }
 
-#ak-panel input[type="date"]{
-    margin-bottom:10px
+#ak-panel .ak-data-info{
+    margin:10px 10px 0;
+    font-size:12px;
+    color:#444
 }
 
-#ak-panel label.ak-field-label{
-    display:block;
-    margin:0 10px;
-    font-size:11px;
-    color:#666
+#ak-panel .ak-data-info strong{
+    color:#111
 }
 
 #ak-panel .status{
@@ -550,8 +561,9 @@
     </option>
 </select>
 
-<label class="ak-field-label" for="ak-data-select">Data da chamada</label>
-<input type="date" id="ak-data-select" value="${dataFortalezaHoje()}" />
+<div class="ak-data-info">
+    Data da chamada: <strong id="ak-data-detectada">--</strong>
+</div>
 
 <div class="status">
     Salvos: 0
@@ -560,6 +572,16 @@
         document.body.appendChild(box);
 
         window.__ak_panel = box;
+
+        // Mantém a data exibida no painel em sincronia com o campo #data
+        // do Professor Online, sem duplicar o campo na nossa UI.
+        atualizarDataDetectada();
+        const campoDataSeduc = document.querySelector("#data");
+        if (campoDataSeduc && !campoDataSeduc.dataset.akListenerAttached) {
+            campoDataSeduc.addEventListener("input", atualizarDataDetectada);
+            campoDataSeduc.addEventListener("change", atualizarDataDetectada);
+            campoDataSeduc.dataset.akListenerAttached = "1";
+        }
 
         // Carrega turmas
         box.querySelector(".load").onclick = carregarTurmas;
@@ -570,7 +592,7 @@
             await esperaCarregar();
 
             const selectedTurma = $("#ak-turma-select")?.value;
-            const selectedData = $("#ak-data-select")?.value || dataFortalezaHoje();
+            const selectedData = obterDataSeduc() || dataFortalezaHoje();
 
             if (selectedTurma) {
 
@@ -620,11 +642,27 @@
         const base = window.BASE_TEMP || [];
         const select = $("#ak-turma-select");
         const selectedName = select?.selectedOptions?.[0]?.textContent;
-        const selectedData = $("#ak-data-select")?.value;
 
         s.textContent = base.length
-            ? `${selectedName ? selectedName + " - " : ""}${selectedData ? selectedData + " - " : ""}Carregados: ${base.length}`
+            ? `${selectedName ? selectedName + " - " : ""}Carregados: ${base.length}`
             : "Nenhum carregado";
+    }
+
+    // Atualiza o texto de data exibido no painel, refletindo o campo
+    // #data do Professor Online (a mesma data que será usada na consulta).
+    function atualizarDataDetectada() {
+
+        const el = $("#ak-panel #ak-data-detectada");
+
+        if (!el) {
+            return;
+        }
+
+        const valor = document.querySelector("#data")?.value?.trim();
+
+        el.textContent = valor
+            ? valor
+            : `${dataFortalezaHoje()} (campo de data não encontrado)`;
     }
 
     // Carrega JSON para memória temporária
