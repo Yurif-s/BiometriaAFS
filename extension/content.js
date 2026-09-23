@@ -55,6 +55,49 @@
         return `${ano}-${mes}-${dia}`;
     }
 
+    // Lê o texto da turma selecionada no Professor Online. O campo é um
+    // widget bootstrap-select — o botão exibe a descrição completa da
+    // turma tanto no atributo title quanto no texto interno, ex.:
+    // "Integrado 3ª Série| Ensino Médio | ... | TÉCNICO EM DESENVOLVIMENTO
+    // DE SISTEMAS | D".
+    function obterTextoTurmaSeduc() {
+        const botao = document.querySelector('[data-id="turma"]');
+        if (!botao) return null;
+        const texto = (botao.getAttribute("title") || botao.textContent || "").trim();
+        return texto || null;
+    }
+
+    // Tenta casar a turma exibida no Professor Online com uma das turmas
+    // cadastradas no BiometriaAFS (nomes como "3° Desenvolvimento de
+    // Sistemas"), comparando a série (ex.: "3ª Série" ~ "3°") e o nome do
+    // curso como substring. Só retorna um id quando existe exatamente uma
+    // turma compatível — em caso de nenhum resultado ou ambiguidade, não
+    // escolhe nada sozinho (evita marcar falta na turma errada).
+    function detectarTurmaId(textoSeduc, turmas) {
+        if (!textoSeduc || !Array.isArray(turmas) || !turmas.length) {
+            return null;
+        }
+
+        const textoNorm = norm(textoSeduc);
+        const serieMatch = /(\d+)\s*[ªº°]?\s*S[EÉ]RIE/i.exec(textoSeduc);
+        const serieSeduc = serieMatch ? serieMatch[1] : null;
+
+        const candidatos = turmas.filter(t => {
+            const nome = t.nome || t.name || "";
+            const serieTurmaMatch = /^\s*(\d+)/.exec(nome);
+            const serieTurma = serieTurmaMatch ? serieTurmaMatch[1] : null;
+
+            if (serieSeduc && serieTurma && serieSeduc !== serieTurma) {
+                return false;
+            }
+
+            const restoNome = norm(nome.replace(/^\s*\d+\s*[°º ª]*\s*/, ""));
+            return restoNome.length > 0 && textoNorm.includes(restoNome);
+        });
+
+        return candidatos.length === 1 ? candidatos[0].id : null;
+    }
+
     // Verifica se está na tela de frequência
     const isFreq = () => SEL_FREQ.test(location.pathname + location.search);
 
@@ -129,13 +172,38 @@
             `;
         }
 
+        // Tenta selecionar automaticamente a turma que já está aberta no
+        // Professor Online, comparando com a lista recém-carregada.
+        const turmaDetectada = tentarDetectarTurma();
+
         // Atualiza status
         if (status) {
 
             status.textContent = window.__ak_turmas.length
-                ? `Turmas carregadas: ${window.__ak_turmas.length}`
+                ? `Turmas carregadas: ${window.__ak_turmas.length}${turmaDetectada ? " (turma atual detectada)" : ""}`
                 : "Nenhuma turma encontrada";
         }
+    }
+
+    // Aplica a detecção automática de turma ao <select> do painel, se
+    // houver exatamente uma correspondência com a turma aberta no
+    // Professor Online. Retorna true se aplicou.
+    function tentarDetectarTurma() {
+
+        const select = $("#ak-turma-select");
+
+        if (!select) {
+            return false;
+        }
+
+        const idDetectado = detectarTurmaId(obterTextoTurmaSeduc(), window.__ak_turmas);
+
+        if (idDetectado == null) {
+            return false;
+        }
+
+        select.value = String(idDetectado);
+        return select.value === String(idDetectado);
     }
 
     // Carrega faltosos de uma turma específica em uma data específica
@@ -581,6 +649,21 @@
             campoDataSeduc.addEventListener("input", atualizarDataDetectada);
             campoDataSeduc.addEventListener("change", atualizarDataDetectada);
             campoDataSeduc.dataset.akListenerAttached = "1";
+        }
+
+        // Reage se o professor trocar de turma no próprio Professor Online
+        // (o widget bootstrap-select atualiza o texto/title do botão, não
+        // dispara um <select> nativo, então observamos o botão diretamente).
+        const botaoTurmaSeduc = document.querySelector('[data-id="turma"]');
+        if (botaoTurmaSeduc && !botaoTurmaSeduc.dataset.akObserverAttached) {
+            const turmaObserver = new MutationObserver(() => tentarDetectarTurma());
+            turmaObserver.observe(botaoTurmaSeduc, {
+                attributes: true,
+                attributeFilter: ["title"],
+                childList: true,
+                subtree: true,
+            });
+            botaoTurmaSeduc.dataset.akObserverAttached = "1";
         }
 
         // Carrega turmas
