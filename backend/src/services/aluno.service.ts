@@ -31,12 +31,13 @@ export class AlunoService implements OnModuleInit, OnModuleDestroy {
   private reservedIds = new Map<number, number>(); // biometriaId -> timestamp
 
   // Evita que duas leituras da mesma digital, disparadas quase ao mesmo
-  // tempo (ex.: dedo mantido no sensor, retry de rede, chamadas de teste
-  // em sequência rápida), leiam o mesmo estado "sem entrada ainda" do banco
-  // antes que a primeira grave — o que geraria duas Entradas em vez de uma
-  // Entrada seguida de Saída.
-  private ultimaLeituraProcessadaEm = new Map<number, number>(); // biometriaId -> timestamp
-  private static readonly DEBOUNCE_LEITURA_MS = 3000;
+  // tempo (ex.: retry de rede, duas requisições concorrentes), leiam o
+  // mesmo estado "sem entrada ainda" do banco antes que a primeira grave
+  // — o que geraria duas Entradas em vez de uma Entrada seguida de Saída.
+  // É uma trava de "em andamento", não um cooldown por tempo: libera assim
+  // que a leitura anterior termina, então um segundo toque real e legítimo
+  // (ex.: Entrada e, segundos depois, Saída) nunca é descartado.
+  private leiturasEmAndamento = new Set<number>(); // biometriaId
 
   constructor(
     private readonly alunoRepository: AlunoRepository,
@@ -261,68 +262,65 @@ export class AlunoService implements OnModuleInit, OnModuleDestroy {
 
   async registrarLeitura(biometria: number) {
     // Checagem e marcação síncronas: fecham a janela de corrida antes de
-    // qualquer `await`, então duas chamadas quase simultâneas não podem
-    // passar ambas por aqui.
-    const agoraMs = Date.now();
-    const ultimaLeitura = this.ultimaLeituraProcessadaEm.get(biometria);
-    const leituraDuplicada =
-      ultimaLeitura !== undefined && agoraMs - ultimaLeitura < AlunoService.DEBOUNCE_LEITURA_MS;
-    this.ultimaLeituraProcessadaEm.set(biometria, agoraMs);
-
-    if (leituraDuplicada) {
-      this.logger.warn(
-        `Leitura duplicada ignorada para biometria ${biometria} (dentro de ${AlunoService.DEBOUNCE_LEITURA_MS}ms da anterior).`,
-      );
+    // qualquer `await`, então duas chamadas quase simultâneas para a mesma
+    // digital não podem processar ambas o mesmo estado desatualizado.
+    if (this.leiturasEmAndamento.has(biometria)) {
+      this.logger.warn(`Leitura concorrente ignorada para biometria ${biometria} (já há uma em andamento).`);
       const alunoAtual = await this.alunoRepository.findByBiometria(biometria);
       return { encontrado: !!alunoAtual, aluno: alunoAtual ?? undefined };
     }
+    this.leiturasEmAndamento.add(biometria);
 
-    const aluno = await this.alunoRepository.findByBiometria(biometria);
+    try {
+      const aluno = await this.alunoRepository.findByBiometria(biometria);
 
-    let updatedAluno = aluno;
-    let tipoAcesso: 'Entrada' | 'Saída' = 'Entrada';
-    const agora = new Date();
+      let updatedAluno = aluno;
+      let tipoAcesso: 'Entrada' | 'Saída' = 'Entrada';
+      const agora = new Date();
 
-    if (aluno) {
-      const entradaHoje = this.mesmoDia(aluno.entrada, agora);
-      const saidaPadrao = this.saidaPadraoPara(agora);
-      const saidaPadraoFutura = this.ehSaidaPadrao(aluno.saida, agora) && agora < saidaPadrao;
-      const saidaDepoisDaEntrada =
-        !!aluno.saida && !!aluno.entrada && aluno.saida > aluno.entrada;
+      if (aluno) {
+        const entradaHoje = this.mesmoDia(aluno.entrada, agora);
+        const saidaPadrao = this.saidaPadraoPara(agora);
+        const saidaPadraoFutura = this.ehSaidaPadrao(aluno.saida, agora) && agora < saidaPadrao;
+        const saidaDepoisDaEntrada =
+          !!aluno.saida && !!aluno.entrada && aluno.saida > aluno.entrada;
 
-      if (!entradaHoje) {
-        updatedAluno = await this.registrarEntrada(aluno.id, agora, saidaPadrao);
-        tipoAcesso = 'Entrada';
-      } else if (!saidaDepoisDaEntrada || saidaPadraoFutura) {
-        const [alunoAtualizado] = await Promise.all([
-          this.alunoRepository.update(aluno.id, { saida: agora }),
-          this.atualizarOuCriarSaidaPadrao(aluno.id, saidaPadrao, agora),
-        ]);
-        updatedAluno = alunoAtualizado;
-        tipoAcesso = 'Saída';
-      } else {
-        updatedAluno = await this.registrarEntrada(aluno.id, agora, saidaPadrao);
-        tipoAcesso = 'Entrada';
+        if (!entradaHoje) {
+          updatedAluno = await this.registrarEntrada(aluno.id, agora, saidaPadrao);
+          tipoAcesso = 'Entrada';
+        } else if (!saidaDepoisDaEntrada || saidaPadraoFutura) {
+          const [alunoAtualizado] = await Promise.all([
+            this.alunoRepository.update(aluno.id, { saida: agora }),
+            this.atualizarOuCriarSaidaPadrao(aluno.id, saidaPadrao, agora),
+          ]);
+          updatedAluno = alunoAtualizado;
+          tipoAcesso = 'Saída';
+        } else {
+          updatedAluno = await this.registrarEntrada(aluno.id, agora, saidaPadrao);
+          tipoAcesso = 'Entrada';
+        }
       }
+
+      // updatedAluno já vem com a turma incluída (ver AlunoRepository) — evita
+      // um segundo round-trip ao banco só para buscar o nome da turma.
+      const nomeTurma = updatedAluno?.turma?.nome;
+
+      // Notifica o frontend via WebSocket independente de ter encontrado ou não
+      this.biometriaGateway.emitirBiometriaLida(
+        biometria,
+        updatedAluno?.nome,
+        updatedAluno?.matricula,
+        nomeTurma,
+        updatedAluno?.entrada,
+        updatedAluno?.saida,
+        aluno ? tipoAcesso : undefined,
+        aluno ? agora : undefined,
+      );
+
+      return { encontrado: !!aluno, aluno: updatedAluno ?? undefined };
+    } finally {
+      this.leiturasEmAndamento.delete(biometria);
     }
-
-    // updatedAluno já vem com a turma incluída (ver AlunoRepository) — evita
-    // um segundo round-trip ao banco só para buscar o nome da turma.
-    const nomeTurma = updatedAluno?.turma?.nome;
-
-    // Notifica o frontend via WebSocket independente de ter encontrado ou não
-    this.biometriaGateway.emitirBiometriaLida(
-      biometria,
-      updatedAluno?.nome,
-      updatedAluno?.matricula,
-      nomeTurma,
-      updatedAluno?.entrada,
-      updatedAluno?.saida,
-      aluno ? tipoAcesso : undefined,
-      aluno ? agora : undefined,
-    );
-
-    return { encontrado: !!aluno, aluno: updatedAluno ?? undefined };
   }
 
   async registrarFalha() {
